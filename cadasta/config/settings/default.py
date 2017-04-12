@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
+from kombu import Exchange, Queue
 
 from django.utils.translation import ugettext_lazy as _
 from .languages import FORM_LANGS  # noqa
@@ -53,6 +54,7 @@ INSTALLED_APPS = (
     'party',
     'xforms',
     'search',
+    'tasks',
 
     'crispy_forms',
     'parsley',
@@ -536,3 +538,37 @@ ES_SCHEME = 'http'
 ES_HOST = 'localhost'
 ES_PORT = '9200'
 ES_MAX_RESULTS = 10000
+
+
+# Async Tooling
+# Exchanges
+TASK_EXCHANGE = 'task_exchange'
+CELERY_DEFAULT_EXCHANGE = TASK_EXCHANGE
+CELERY_DEFAULT_EXCHANGE_TYPE = 'topic'
+CELERY_RESULT_EXCHANGE = 'result_exchange'
+CELERY_RESULT_EXCHANGE_TYPE = 'topic'
+default_exchange = Exchange(TASK_EXCHANGE, CELERY_DEFAULT_EXCHANGE_TYPE)
+result_exchange = Exchange(CELERY_RESULT_EXCHANGE, CELERY_RESULT_EXCHANGE_TYPE)
+
+# Queues
+PLATFORM_QUEUE = 'platform.fifo'
+CELERY_TASK_QUEUES = (
+    # Associate queues with an exchange and a specific routing key or
+    # routing key pattern
+    Queue('export', default_exchange, routing_key='export'),
+    Queue(PLATFORM_QUEUE, default_exchange, routing_key='#'),
+    # BUG:  Having this declared breaks routing tasks to Platform queue
+    #       when using RabbitMQ. Perhaps we can only have a single
+    #       exchange for each queue.
+    # Queue(PLATFORM_QUEUE, result_exchange),
+)
+
+# Routing
+CELERY_TASK_ROUTES = {
+    # Associate specific task names or task name patterns to an exchange
+    # and routing key
+    'export.*': {
+        'exchange': TASK_EXCHANGE,
+        'routing_key': 'export',
+    },
+}
