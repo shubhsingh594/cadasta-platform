@@ -14,6 +14,8 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 import os
 
 from django.utils.translation import ugettext_lazy as _
+from kombu import Queue, Exchange
+
 from .languages import FORM_LANGS  # noqa
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -536,28 +538,24 @@ ES_HOST = 'localhost'
 ES_PORT = '9200'
 ES_MAX_RESULTS = 10000
 
+
 CELERY_BROKER_URL = 'redis://'
 CELERY_RESULT_BACKEND = 'redis://'
-
-from kombu import Queue, Exchange
-
-default_exchange = Exchange('xchange', 'topic')
-
-CELERY_DEFAULT_QUEUE = '*'
-CELERY_TASK_DEFAULT_EXCHANGE = CELERY_DEFAULT_QUEUE
-# CELERY_TASK_DEFAULT_EXCHANGE_TYPE = 'topic'
-# CELERY_DEFAULT_EXCHANGE = 'xchange'
-# CELERY_DEFAULT_EXCHANGE_TYPE = 'topic'
-
-# FIXME: Currently, we must call task with rounting_key for routing to work
-# FIXME: Currently, every time you call a task, the 'celery' queue ups by 1
-CELERY_TASK_QUEUES = (
-    Queue(CELERY_DEFAULT_QUEUE, default_exchange, routing_key='#'),
-    Queue('export', default_exchange, routing_key='export.#'),
-    Queue('import', default_exchange, routing_key='import.#'),
-)
-
-# NOTE: Must have routes declared to use Topic Exchange
+CELERY_TASK_DEFAULT_EXCHANGE = 'topic_exchange'
+CELERY_TASK_DEFAULT_EXCHANGE_TYPE = 'topic'
+# Correlate specific task names or task name patterns to an exchange and
+# routing key
 CELERY_TASK_ROUTES = {
-    '*': {'exchange': 'xchange', 'queue': CELERY_DEFAULT_QUEUE},
+    'export.*': {
+        'exchange': CELERY_TASK_DEFAULT_EXCHANGE,
+        'routing_key': 'exports',
+    },
 }
+# Correlate queues with an exchange and a specific routing key or
+# routing key pattern
+default_exchange = Exchange(
+    CELERY_TASK_DEFAULT_EXCHANGE, CELERY_TASK_DEFAULT_EXCHANGE_TYPE)
+CELERY_TASK_QUEUES = (
+    Queue('task_duplicate', default_exchange, routing_key='#'),
+    Queue('export', default_exchange, routing_key='exports'),
+)

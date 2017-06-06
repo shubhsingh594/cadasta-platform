@@ -10,3 +10,10 @@ class TasksConfig(AppConfig):
         from .consumers import ResultConsumer
         app.steps['consumer'].add(ResultConsumer)
         app.autodiscover_tasks(force=True)
+
+        # Ensure exchange is set up with all queues
+        p = app.amqp.producer_pool.acquire()
+        try:
+            [p.maybe_declare(q) for q in app.amqp.queues.values()]
+        finally:
+            p.release()
