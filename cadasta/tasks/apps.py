@@ -7,8 +7,10 @@ class TasksConfig(AppConfig):
     def ready(self):
         from . import signals  # NOQA
         from .celery import app
+
         from .consumers import ResultConsumer
         app.steps['consumer'].add(ResultConsumer)
+
         app.autodiscover_tasks(force=True)
 
         # Ensure exchange is set up with all queues

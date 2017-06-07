@@ -56,8 +56,7 @@ class BackgroundTask(models.Model):
         'self', related_name='children', on_delete=models.CASCADE,
         blank=True, null=True)
     root = models.ForeignKey(
-        'self', related_name='descendents', on_delete=models.CASCADE,
-        blank=True, null=True)
+        'self', related_name='set', on_delete=models.CASCADE)
     immutable = models.NullBooleanField(
         _("If arguments are immutable (only applies to chained tasks)."))
 
@@ -89,3 +88,9 @@ class BackgroundTask(models.Model):
     @input_kwargs.setter
     def input_kwargs(self, value):
         self.input['kwargs'] = value
+
+    @property
+    def set_is_complete(self):
+        """ Report if task and all descendent tasks are completed """
+        return not self.set.exclude(
+                status__in=self.DONE_STATES).exists()

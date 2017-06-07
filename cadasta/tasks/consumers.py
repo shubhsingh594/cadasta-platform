@@ -1,15 +1,71 @@
 import logging
 
-from celery import bootsteps, app
-from django.conf import settings
-from django.db.models import F
-from django.db.models.expressions import CombinedExpression, Value
-from kombu import Consumer, Queue
+from celery import bootsteps
+
 
 from .models import BackgroundTask
 
 
 logger = logging.getLogger(__name__)
+
+
+def process_message(message):
+    """ Add scheduled tasks to database """
+    try:
+        args, kwargs, options = message.decode()
+        task_id = message.headers['id']
+
+        # Add default properties
+        option_keys = ['eta', 'expires', 'retries', 'timelimit']
+        message.properties.update(
+            **{k: v for k, v in message.headers.items()
+               if k in option_keys and v not in (None, [None, None])})
+
+        # Ensure chained followup tasks contain proper data
+        chain_parent_id = task_id[:]
+        chain = options.get('chain') or []
+        for t in chain[::-1]:  # Chain array comes in reverse order
+            t['parent_id'] = chain_parent_id
+            chain_parent_id = t['options']['task_id']
+
+        if message.headers['parent_id'] == 'ID_hello_suzy':
+            print('headers', message.headers)
+            print('props', message.properties)
+            print('message', message)
+            # from celery.contrib import rdb
+            # rdb.set_trace()
+
+        # TODO: Add support for grouped tasks
+        # TODO: Add support tasks gednerated by workers
+        _, created = BackgroundTask.objects.get_or_create(
+            id=task_id,
+            defaults={
+                'type': message.headers['task'],
+                'input_args': args,
+                'input_kwargs': kwargs,
+                'options': message.properties,
+                'parent_id': message.headers['parent_id'],
+                'root_id': message.headers['root_id'],
+            }
+        )
+        if created:
+            logger.debug("Processed message: %r", message)
+        else:
+            logger.warn("Message already existed in db: %r", message)
+    except Exception as e:
+        should_requeue = message._state != 'REQUEUED'
+        try:
+            msg = "Failed to process message"
+            if should_requeue:
+                message.requeue()
+                logger.warn("%s, requeued: %s, %r", msg, e, message)
+            else:
+                logger.exception("%s, not requeued: %r", msg, message)
+        except:
+            logger.exception("Failed to requeue: %r", message)
+            message.ack()
+    else:
+        message.ack()
 
 
 class ResultConsumer(bootsteps.ConsumerStep):
@@ -20,49 +76,13 @@ class ResultConsumer(bootsteps.ConsumerStep):
     at the Result queue. Ex. "celery -A config worker"
     """
 
-    def __init__(self, *args, **kwargs):
-        if settings.CELERY_RESULT_QUEUE in app.app_or_default().amqp.queues:
-            msg = (
-                "Error: Please don't specify the result queue (\"{}\") as a "
-                "queue to be consumed by the worker. Result messages aren't "
-                "encoded in the same format as Task messages. Bad things will "
-                "happen."
-            )
-            raise ValueError(msg.format(settings.CELERY_RESULT_QUEUE))
-        super(ResultConsumer, self).__init__(*args, **kwargs)
+    def __init__(self, consumer, *args, **kwargs):
+        # Override parent consumer
+        consumer.create_task_handler = lambda: process_message
+        super(ResultConsumer, self).__init__(consumer, *args, **kwargs)
 
     def get_consumers(self, channel):
-        return [Consumer(channel,
-                         queues=[Queue(settings.CELERY_RESULT_QUEUE)],
-                         callbacks=[self.handle_message],
-                         accept=['json'])]
+        return []
 
     def handle_message(self, body, message):
-        try:
-            logger.debug('Received message: {0!r}'.format(body))
-            task_qs = BackgroundTask.objects.filter(id=body['task_id'])
-            assert task_qs.exists()
-
-            status = body.get('status')
-            if status:
-                task_qs.update(status=status)
-
-            result = body['result']
-            if status in BackgroundTask.DONE_STATES:
-                task_qs.update(output=result)
-            else:
-                assert isinstance(result, dict), (
-                    "Malformed result data, expecting a dict"
-                )
-                log = result.get('log')
-                if log:
-                    task_qs.update(log=CombinedExpression(
-                        F('log'), '||', Value([log])
-                    ))
-        except:
-            logger.exception("Failed to process task")
-        finally:
-            try:
-                message.ack()
-            except:
-                logger.exception("Failed to acknowledge message")
+        pass

@@ -510,7 +510,7 @@ ICON_LOOKUPS = {
 }
 
 MIME_LOOKUPS = {
-     'gpx': 'application/gpx+xml'
+    'gpx': 'application/gpx+xml'
 }
 
 FILE_UPLOAD_HANDLERS = [
@@ -541,21 +541,19 @@ ES_MAX_RESULTS = 10000
 
 CELERY_BROKER_URL = 'redis://'
 CELERY_RESULT_BACKEND = 'redis://'
-CELERY_TASK_DEFAULT_EXCHANGE = 'topic_exchange'
-CELERY_TASK_DEFAULT_EXCHANGE_TYPE = 'topic'
-# Correlate specific task names or task name patterns to an exchange and
+CELERY_DEFAULT_QUEUE = 'celery'
+# Associate specific task names or task name patterns to an exchange and
 # routing key
 CELERY_TASK_ROUTES = {
     'export.*': {
-        'exchange': CELERY_TASK_DEFAULT_EXCHANGE,
-        'routing_key': 'exports',
+        'exchange': CELERY_DEFAULT_QUEUE,
+        'routing_key': 'export',
     },
 }
-# Correlate queues with an exchange and a specific routing key or
+# Associate queues with an exchange and a specific routing key or
 # routing key pattern
-default_exchange = Exchange(
-    CELERY_TASK_DEFAULT_EXCHANGE, CELERY_TASK_DEFAULT_EXCHANGE_TYPE)
+default_exchange = Exchange(CELERY_DEFAULT_QUEUE, 'topic')
 CELERY_TASK_QUEUES = (
-    Queue('task_duplicate', default_exchange, routing_key='#'),
-    Queue('export', default_exchange, routing_key='exports'),
+    Queue(CELERY_DEFAULT_QUEUE, default_exchange, routing_key='#'),
+    Queue('export', default_exchange, routing_key='export'),
 )
