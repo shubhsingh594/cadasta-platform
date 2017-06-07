@@ -5,7 +5,6 @@ class TasksConfig(AppConfig):
     name = 'tasks'
 
     def ready(self):
-        from . import signals  # NOQA
         from .celery import app
 
         from .consumers import ResultConsumer
