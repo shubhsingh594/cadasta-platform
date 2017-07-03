@@ -557,10 +557,6 @@ CELERY_TASK_QUEUES = (
     # routing key pattern
     Queue('export', default_exchange, routing_key='export'),
     Queue(PLATFORM_QUEUE, default_exchange, routing_key='#'),
-    # BUG:  Having this declared breaks routing tasks to Platform queue
-    #       when using RabbitMQ. Perhaps we can only have a single
-    #       exchange for each queue.
-    # Queue(PLATFORM_QUEUE, result_exchange),
 )
 
 # Routing
