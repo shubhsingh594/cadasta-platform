@@ -10,3 +10,6 @@ ROLE_CHOICES = (('PU', _('Project User')),
 
 ACCESS_CHOICES = [("public", _("Public")),
                   ("private", _("Private"))]
+
+LAYERGROUP_CHOICES = (("wms", _("OGC Web Map Service (WMS)")), )
+LAYER_CHOICES = (("wms", _("OGC Web Map Service (WMS)")), )

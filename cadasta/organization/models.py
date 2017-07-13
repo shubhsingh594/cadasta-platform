@@ -19,8 +19,7 @@ from core.models import RandomIDModel, SlugModel
 from geography.models import WorldBorder
 from resources.mixins import ResourceModelMixin
 from .validators import validate_contact
-from .choices import ROLE_CHOICES, ACCESS_CHOICES
-from . import messages
+from . import messages, choices
 
 
 PERMISSIONS_DIR = settings.BASE_DIR + '/permissions/'
@@ -48,7 +47,7 @@ class Organization(SlugModel, RandomIDModel):
     # logo = TemporalForeignKey('Resource')
     last_updated = models.DateTimeField(auto_now=True)
     access = models.CharField(
-        default="public", choices=ACCESS_CHOICES, max_length=8
+        default="public", choices=choices.ACCESS_CHOICES, max_length=8
     )
 
     history = HistoricalRecords()
@@ -181,7 +180,7 @@ class Project(ResourceModelMixin, SlugModel, RandomIDModel):
     last_updated = models.DateTimeField(auto_now=True)
     extent = gismodels.PolygonField(null=True)
     access = models.CharField(
-        default="public", choices=ACCESS_CHOICES, max_length=8
+        default="public", choices=choices.ACCESS_CHOICES, max_length=8
     )
     current_questionnaire = models.CharField(
         max_length=24, null=True, blank=True
@@ -313,7 +312,7 @@ class ProjectRole(RandomIDModel):
     project = models.ForeignKey(Project)
     user = models.ForeignKey('accounts.User')
     role = models.CharField(max_length=2,
-                            choices=ROLE_CHOICES,
+                            choices=choices.ROLE_CHOICES,
                             default='PU')
 
     history = HistoricalRecords()
@@ -372,3 +371,40 @@ def assign_project_permissions(sender, instance, **kwargs):
 @receiver(models.signals.post_delete, sender=ProjectRole)
 def remove_project_permissions(sender, instance, **kwargs):
     assign_prj_policies(instance, delete=True)
+
+
+class LayerGroup(RandomIDModel):
+    """
+    A LayerGroup represents a group of map layers that can be added as
+    Additional background layers to platform's map. LayerGroups usually
+    represent on mapping service. Currently, we only support WMS; more options
+    like TMS will be scheduled in the future.
+    """
+    name = models.CharField(max_length=200)
+    type = models.CharField(default="wms",
+                            choices=choices.LAYERGROUP_CHOICES,
+                            max_length=10)
+    project = models.ForeignKey(Project,
+                                related_name='layer_groups',
+                                on_delete=models.CASCADE)
+    created_date = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
+
+
+class Layer(RandomIDModel):
+    """
+    A Layer is a map layer that can be added as an additional background layer
+    to platform's map. Currently, we only support WMS; more options like TMS
+    will be scheduled in the future.
+    """
+    name = models.CharField(max_length=200)
+    title = models.CharField(max_length=200)
+    type = models.CharField(default="wms",
+                            choices=choices.LAYER_CHOICES,
+                            max_length=10)
+    group = models.ForeignKey(LayerGroup,
+                              related_name='layers',
+                              on_delete=models.CASCADE)
+    url = models.URLField(null=True, blank=True, max_length=200)
+    created_date = models.DateTimeField(auto_now_add=True)
+    last_updated = models.DateTimeField(auto_now=True)
