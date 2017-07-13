@@ -24,7 +24,7 @@ from .choices import ADMIN_CHOICES, ROLE_CHOICES
 from .download.shape import ShapeExporter
 from .download.xls import XLSExporter
 from organization import fields as org_fields
-from .models import Organization, OrganizationRole, Project, ProjectRole
+from . import models
 
 FORM_CHOICES = (('Pb', _('Public User')),) + ROLE_CHOICES
 QUESTIONNAIRE_TYPES = [
@@ -36,13 +36,13 @@ QUESTIONNAIRE_TYPES = [
 
 def create_update_or_delete_project_role(project, user, role):
     if role != 'Pb':
-        ProjectRole.objects.update_or_create(
+        models.ProjectRole.objects.update_or_create(
             user=user,
             project_id=project,
             defaults={'role': role})
     else:
-        ProjectRole.objects.filter(user=user,
-                                   project_id=project).delete()
+        models.ProjectRole.objects.filter(user=user,
+                                          project_id=project).delete()
 
 
 class ContactsForm(SanitizeFieldsForm, forms.Form):
@@ -132,7 +132,7 @@ class OrganizationForm(SanitizeFieldsForm, forms.ModelForm):
     access = org_fields.PublicPrivateField()
 
     class Meta:
-        model = Organization
+        model = models.Organization
         fields = ['name', 'description', 'urls', 'contacts', 'access']
 
     class Media:
@@ -160,7 +160,7 @@ class OrganizationForm(SanitizeFieldsForm, forms.ModelForm):
         instance.save()
 
         if is_create:
-            OrganizationRole.objects.create(
+            models.OrganizationRole.objects.create(
                 organization=instance,
                 user=self.user,
                 admin=True
@@ -184,7 +184,7 @@ class AddOrganizationMemberForm(forms.Form):
                 identifier=identifier)
         except (User.DoesNotExist, User.MultipleObjectsReturned) as e:
             raise forms.ValidationError(e)
-        user_exists = OrganizationRole.objects.filter(
+        user_exists = models.OrganizationRole.objects.filter(
             user=self.user, organization=self.organization).exists()
         if user_exists:
             raise forms.ValidationError(
@@ -198,7 +198,7 @@ class AddOrganizationMemberForm(forms.Form):
                   "validate.")
             )
 
-        self.instance = OrganizationRole.objects.create(
+        self.instance = models.OrganizationRole.objects.create(
             organization=self.organization, user=self.user)
         return self.instance
 
@@ -212,7 +212,7 @@ class EditOrganizationMemberForm(SuperUserCheck, forms.Form):
         self.organization = org
         self.user = user
         self.current_user = current_user
-        self.org_role_instance = OrganizationRole.objects.get(
+        self.org_role_instance = models.OrganizationRole.objects.get(
             user=user,
             organization=self.organization)
 
@@ -242,10 +242,10 @@ class EditOrganizationMemberProjectPermissionForm(forms.Form):
         self.organization = org
         self.user = user
         self.current_user = current_user
-        self.org_role_instance = OrganizationRole.objects.get(
+        self.org_role_instance = models.OrganizationRole.objects.get(
             user=user, organization=self.organization)
 
-        project_roles = ProjectRole.objects.filter(
+        project_roles = models.ProjectRole.objects.filter(
             user=user, project__organization=org).values('project__id', 'role')
         project_roles = {r['project__id']: r['role'] for r in project_roles}
         active_projects = self.organization.projects.filter(archived=False)
@@ -270,7 +270,7 @@ class ProjectAddExtents(forms.ModelForm):
     extent = gisforms.PolygonField(widget=LeafletWidget(), required=False)
 
     class Meta:
-        model = Project
+        model = models.Project
         fields = ['extent']
 
 
@@ -298,7 +298,7 @@ class ProjectAddDetails(SanitizeFieldsForm, SuperUserCheck, forms.Form):
         super().__init__(*args, **kwargs)
 
         if self.is_superuser(self.user):
-            self.orgs = Organization.objects.filter(
+            self.orgs = models.Organization.objects.filter(
                 archived=False).order_by('name')
         else:
             qs = self.user.organizations.filter(
@@ -325,7 +325,7 @@ class ProjectAddDetails(SanitizeFieldsForm, SuperUserCheck, forms.Form):
         # (Explicit validation because we are using a wizard and the
         # unique_together validation cannot occur in the proper page)
         if self.cleaned_data.get('organization'):
-            not_unique = Project.objects.filter(
+            not_unique = models.Project.objects.filter(
                 organization__slug=self.cleaned_data['organization'],
                 name=name,
             ).exists()
@@ -357,7 +357,7 @@ class ProjectEditDetails(SanitizeFieldsForm, forms.ModelForm):
         js = ('js/file-upload.js', 'js/sanitize.js')
 
     class Meta:
-        model = Project
+        model = models.Project
         fields = ['name', 'description', 'access', 'urls', 'questionnaire',
                   'contacts']
 
@@ -401,7 +401,7 @@ class ProjectEditDetails(SanitizeFieldsForm, forms.ModelForm):
         # Check that name is unique org-wide
         # (Explicit validation because we are using a wizard and the
         # unique_together validation cannot occur in the proper page)
-        not_unique = Project.objects.filter(
+        not_unique = models.Project.objects.filter(
             organization__slug=self.instance.organization.slug,
             name=name,
         ).exclude(id=self.instance.id).exists()
@@ -418,7 +418,7 @@ class PermissionsForm(SuperUserCheck):
     def check_admin(self, user):
         if not hasattr(self, 'admins'):
             self.admins = [
-                role.user for role in OrganizationRole.objects.filter(
+                role.user for role in models.OrganizationRole.objects.filter(
                     organization=self.organization,
                     admin=True
                 ).select_related('user')
@@ -450,7 +450,8 @@ class ProjectAddPermissions(PermissionsForm, forms.Form):
     def __init__(self, organization, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if organization is not None:
-            self.organization = Organization.objects.get(slug=organization)
+            self.organization = models.Organization.objects.get(
+                slug=organization)
             self.set_fields()
 
 
@@ -461,7 +462,7 @@ class ProjectEditPermissions(PermissionsForm, forms.Form):
         super().__init__(*args, **kwargs)
         self.organization = self.project.organization
 
-        project_roles = ProjectRole.objects.filter(
+        project_roles = models.ProjectRole.objects.filter(
             project=self.project).values('user__id', 'role')
         self.project_roles = {r['user__id']: r['role'] for r in project_roles}
         self.set_fields()
@@ -618,3 +619,42 @@ class SelectDefaultsForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.project = project
         self.user = user
+
+
+class LayerGroupForm(SanitizeFieldsForm, forms.ModelForm):
+    base_url = forms.URLField(max_length=200)
+    layers = pg_forms.JSONField(required=False)
+
+    class Media:
+        js = ('js/sanitize.js', )
+
+    class Meta:
+        model = models.LayerGroup
+        fields = ['name']
+
+    def __init__(self, project, *args, **kwargs):
+        self.project = project
+        super().__init__(*args, **kwargs)
+
+    def clean_layers(self):
+        if self.cleaned_data['layers'] is None:
+            return []
+
+        return self.cleaned_data['layers']
+
+    def save(self, *args, **kwargs):
+        # Save the LayerGroup instance using the project passed into the form
+        layer_group = super().save(commit=False, *args, **kwargs)
+        layer_group.project = self.project
+        layer_group.save()
+
+        # Clear all exisiting layers
+        layer_group.layers.all().delete()
+
+        # Save individual layers
+        layers = self.cleaned_data['layers']
+        for layer_data in layers:
+            models.Layer.objects.create(url=self.cleaned_data['base_url'],
+                                        group=layer_group,
+                                        **layer_data)
+        return layer_group

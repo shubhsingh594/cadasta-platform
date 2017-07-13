@@ -1,3 +1,4 @@
+import json
 import random
 from string import ascii_lowercase
 from zipfile import ZipFile
@@ -22,9 +23,8 @@ from resources.utils.io import ensure_dirs
 from spatial.tests.factories import SpatialUnitFactory
 from tutelary.models import Role
 
-from .. import forms
-from ..models import Organization, OrganizationRole, ProjectRole
-from .factories import OrganizationFactory, ProjectFactory
+from .. import forms, models
+from .factories import OrganizationFactory, ProjectFactory, LayerGroupFactory, LayerFactory
 
 
 class OrganizationTest(UserTestCase, TestCase):
@@ -48,18 +48,19 @@ class OrganizationTest(UserTestCase, TestCase):
         form = forms.OrganizationForm(data, user=UserFactory.create())
         assert form.is_valid() is True
         form.save()
-        assert Organization.objects.count() == count
+        assert models.Organization.objects.count() == count
 
     def test_add_organization(self):
         self._save(self.data)
-        org = Organization.objects.first()
+        org = models.Organization.objects.first()
         assert org.slug == 'org'
-        assert OrganizationRole.objects.filter(organization=org).count() == 1
+        assert models.OrganizationRole.objects.filter(
+            organization=org).count() == 1
 
     def test_duplicate_name_error(self):
         self.data['description'] = 'Org description #1'
         self._save(self.data)
-        org1 = Organization.objects.first()
+        org1 = models.Organization.objects.first()
         assert org1.slug == 'org'
 
         self.data['description'] = 'Org description #2'
@@ -67,18 +68,18 @@ class OrganizationTest(UserTestCase, TestCase):
         assert form.is_valid() is False
         assert ("Organization with this name already exists."
                 in form.errors['name'])
-        assert Organization.objects.count() == 1
+        assert models.Organization.objects.count() == 1
 
     def test_add_organization_with_url(self):
         self.data['urls'] = 'http://example.com'
         self._save(self.data)
-        org = Organization.objects.first()
+        org = models.Organization.objects.first()
         assert org.urls == ['http://example.com']
 
     def test_add_organization_with_semivalid_url(self):
         self.data['urls'] = 'example.com'
         self._save(self.data)
-        org = Organization.objects.first()
+        org = models.Organization.objects.first()
         assert org.urls == ['http://example.com']
 
     def test_add_organization_with_invalid_url(self):
@@ -92,7 +93,7 @@ class OrganizationTest(UserTestCase, TestCase):
         self.data['contacts-0-email'] = 'ringo@beatles.uk'
         self.data['contacts-0-tel'] = '555-5555'
         self._save(self.data)
-        org = Organization.objects.first()
+        org = models.Organization.objects.first()
         assert org.contacts == [{
             'name': "Ringo Starr",
             'tel': '555-5555',
@@ -102,7 +103,7 @@ class OrganizationTest(UserTestCase, TestCase):
     def test_add_organization_with_unicode_slug(self):
         self.data['name'] = "東京プロジェクト 2016"
         self._save(self.data)
-        org = Organization.objects.first()
+        org = models.Organization.objects.first()
         assert org.slug == '東京プロジェクト-2016'
 
     def test_add_organization_with_restricted_name(self):
@@ -114,7 +115,7 @@ class OrganizationTest(UserTestCase, TestCase):
         assert not form.is_valid()
         assert ("Organization name cannot be “Add” or “New”."
                 in form.errors['name'])
-        assert not Organization.objects.exists()
+        assert not models.Organization.objects.exists()
 
     def test_update_organization(self):
         org = OrganizationFactory.create(slug='some-org')
@@ -215,17 +216,17 @@ class AddOrganizationMemberFormTest(UserTestCase, TestCase):
             identifier = getattr(self.user, identifier_field)
         data = {'identifier': identifier}
         form = forms.AddOrganizationMemberForm(data, organization=self.org)
-        num_roles_before = OrganizationRole.objects.count()
+        num_roles_before = models.OrganizationRole.objects.count()
         if ok:
             form.save()
             assert form.is_valid() is True
-            assert OrganizationRole.objects.filter(
+            assert models.OrganizationRole.objects.filter(
                 organization=self.org, user=self.user).count() == 1
         else:
             with raises(ValueError):
                 form.save()
             assert form.is_valid() is False
-            assert OrganizationRole.objects.count() == num_roles_before
+            assert models.OrganizationRole.objects.count() == num_roles_before
 
     def test_add_with_username(self):
         self._save(identifier_field='username')
@@ -237,7 +238,7 @@ class AddOrganizationMemberFormTest(UserTestCase, TestCase):
         self._save(identifier='some-user', ok=False)
 
     def test_add_already_member_user(self):
-        OrganizationRole.objects.create(
+        models.OrganizationRole.objects.create(
             organization=self.org, user=self.user)
         self._save(identifier_field='username', ok=False)
 
@@ -249,9 +250,9 @@ class EditOrganizationMemberFormTest(UserTestCase, TestCase):
         self.user = UserFactory.create()
         self.org_member = UserFactory.create()
         self.org = OrganizationFactory.create()
-        self.org_role_user = OrganizationRole.objects.create(
+        self.org_role_user = models.OrganizationRole.objects.create(
             organization=self.org, user=self.user)
-        self.org_role_member = OrganizationRole.objects.create(
+        self.org_role_member = models.OrganizationRole.objects.create(
             organization=self.org, user=self.org_member)
         self.prj_1 = ProjectFactory.create(organization=self.org)
         self.prj_2 = ProjectFactory.create(organization=self.org)
@@ -292,8 +293,9 @@ class EditOrganizationMemberFormTest(UserTestCase, TestCase):
 
         data = {'org_role': 'A'}
 
-        org_role = OrganizationRole.objects.create(organization=org, user=user)
-        OrganizationRole.objects.create(
+        org_role = models.OrganizationRole.objects.create(organization=org,
+                                                          user=user)
+        models.OrganizationRole.objects.create(
             organization=org, user=current_user, admin=True)
         form = forms.EditOrganizationMemberForm(org, user, current_user, data,)
 
@@ -322,9 +324,9 @@ class EditOrganizationMemberFormTest(UserTestCase, TestCase):
     def test_assign_and_unassign_admin_role(self):
         # Assert that changing the admin role
         # doesn't affect project permissions
-        ProjectRole.objects.create(
+        models.ProjectRole.objects.create(
             project=self.prj_1, user=self.org_member, role='DC')
-        ProjectRole.objects.create(
+        models.ProjectRole.objects.create(
             project=self.prj_2, user=self.user, role='PM')
 
         data = {
@@ -346,16 +348,16 @@ class EditOrganizationMemberFormTest(UserTestCase, TestCase):
         assert self.org_role_member.admin is False
         assert self.org_role_user.admin is False
 
-        assert (ProjectRole.objects.get(
+        assert (models.ProjectRole.objects.get(
             user=self.org_member, project=self.prj_1).role == 'DC')
 
-        assert (ProjectRole.objects.filter(
+        assert (models.ProjectRole.objects.filter(
             user=self.org_member, project=self.prj_2).exists() is False)
 
-        assert (ProjectRole.objects.filter(
+        assert (models.ProjectRole.objects.filter(
             user=self.user, project=self.prj_1).exists() is False)
 
-        assert (ProjectRole.objects.get(
+        assert (models.ProjectRole.objects.get(
             user=self.user, project=self.prj_2).role == 'PM')
 
         data = {
@@ -373,16 +375,16 @@ class EditOrganizationMemberFormTest(UserTestCase, TestCase):
         assert self.org_role_member.admin is True
         assert self.org_role_user.admin is False
 
-        assert (ProjectRole.objects.get(
+        assert (models.ProjectRole.objects.get(
             user=self.org_member, project=self.prj_1).role == 'DC')
 
-        assert (ProjectRole.objects.filter(
+        assert (models.ProjectRole.objects.filter(
             user=self.org_member, project=self.prj_2).exists() is False)
 
-        assert (ProjectRole.objects.filter(
+        assert (models.ProjectRole.objects.filter(
             user=self.user, project=self.prj_1).exists() is False)
 
-        assert (ProjectRole.objects.get(
+        assert (models.ProjectRole.objects.get(
             user=self.user, project=self.prj_2).role == 'PM')
 
         data = {
@@ -400,16 +402,16 @@ class EditOrganizationMemberFormTest(UserTestCase, TestCase):
         assert self.org_role_member.admin is False
         assert self.org_role_user.admin is False
 
-        assert (ProjectRole.objects.get(
+        assert (models.ProjectRole.objects.get(
             user=self.org_member, project=self.prj_1).role == 'DC')
 
-        assert (ProjectRole.objects.filter(
+        assert (models.ProjectRole.objects.filter(
             user=self.org_member, project=self.prj_2).exists() is False)
 
-        assert (ProjectRole.objects.filter(
+        assert (models.ProjectRole.objects.filter(
             user=self.user, project=self.prj_1).exists() is False)
 
-        assert (ProjectRole.objects.get(
+        assert (models.ProjectRole.objects.get(
             user=self.user, project=self.prj_2).role == 'PM')
 
 
@@ -420,9 +422,9 @@ class EditOrganizationMemberProjectPermissionForm(UserTestCase, TestCase):
         self.user = UserFactory.create()
         self.org_member = UserFactory.create()
         self.org = OrganizationFactory.create()
-        self.org_role_user = OrganizationRole.objects.create(
+        self.org_role_user = models.OrganizationRole.objects.create(
             organization=self.org, user=self.user)
-        self.org_role_member = OrganizationRole.objects.create(
+        self.org_role_member = models.OrganizationRole.objects.create(
             organization=self.org, user=self.org_member)
         self.prj_1 = ProjectFactory.create(organization=self.org)
         self.prj_2 = ProjectFactory.create(organization=self.org)
@@ -434,7 +436,7 @@ class EditOrganizationMemberProjectPermissionForm(UserTestCase, TestCase):
         # Test to make sure that the initial forms for all users
         # aren't affected by changing one user.
         for prj in self.prjs:
-            ProjectRole.objects.create(
+            models.ProjectRole.objects.create(
                 project=prj, user=self.org_member, role='PM')
 
         data = {
@@ -464,7 +466,7 @@ class EditOrganizationMemberProjectPermissionForm(UserTestCase, TestCase):
             assert form.fields[f].initial == 'Pb'
 
     def test_edit_project_roles(self):
-        ProjectRole.objects.create(
+        models.ProjectRole.objects.create(
             project=self.prj_4, user=self.user, role='PM')
 
         data = {
@@ -482,17 +484,17 @@ class EditOrganizationMemberProjectPermissionForm(UserTestCase, TestCase):
 
         assert form.is_valid() is True
         assert self.org_role_user.admin is False
-        assert ProjectRole.objects.get(
+        assert models.ProjectRole.objects.get(
             user=self.user, project=self.prj_1).role == 'DC'
-        assert ProjectRole.objects.get(
+        assert models.ProjectRole.objects.get(
             user=self.user, project=self.prj_2).role == 'PU'
-        assert (ProjectRole.objects.filter(
+        assert (models.ProjectRole.objects.filter(
             user=self.user, project=self.prj_3).exists() is False)
-        assert (ProjectRole.objects.filter(
+        assert (models.ProjectRole.objects.filter(
             user=self.user, project=self.prj_4).exists() is False)
 
         for prj in self.prjs:
-            assert (ProjectRole.objects.filter(
+            assert (models.ProjectRole.objects.filter(
                 user=self.org_member, project=prj).exists() is False)
 
 
@@ -503,7 +505,7 @@ class ProjectAddDetailsTest(UserTestCase, TestCase):
         self.org = OrganizationFactory.create()
         self.user = UserFactory.create()
 
-        OrganizationRole.objects.create(
+        models.OrganizationRole.objects.create(
             organization=self.org, user=self.user, admin=True
         )
         self.data = {
@@ -576,7 +578,7 @@ class ProjectAddDetailsTest(UserTestCase, TestCase):
 
     def test_add_new_project_with_blank_org_choice(self):
         second_org = OrganizationFactory.create()
-        OrganizationRole.objects.create(
+        models.OrganizationRole.objects.create(
             organization=second_org, user=self.user, admin=True
         )
         form = forms.ProjectAddDetails(user=self.user)
@@ -586,7 +588,7 @@ class ProjectAddDetailsTest(UserTestCase, TestCase):
 
     def test_add_new_project_without_blank_org_choice_with_chosen_org(self):
         second_org = OrganizationFactory.create()
-        OrganizationRole.objects.create(
+        models.OrganizationRole.objects.create(
             organization=second_org, user=self.user, admin=True
         )
         form = forms.ProjectAddDetails(user=self.user, org_is_chosen=True)
@@ -837,37 +839,38 @@ class UpdateProjectRolesTest(UserTestCase, TestCase):
         forms.create_update_or_delete_project_role(
             self.project.id, self.user, 'PM')
 
-        assert ProjectRole.objects.count() == 1
-        assert ProjectRole.objects.first().role == 'PM'
+        assert models.ProjectRole.objects.count() == 1
+        assert models.ProjectRole.objects.first().role == 'PM'
 
     def test_do_not_create_new_role_for_public_user(self):
         """No ProjectRole instance should be created when role == Pb"""
         forms.create_update_or_delete_project_role(
             self.project.id, self.user, 'Pb')
 
-        assert ProjectRole.objects.count() == 0
+        assert models.ProjectRole.objects.count() == 0
 
     def test_update_existing_role(self):
-        ProjectRole.objects.create(
+        models.ProjectRole.objects.create(
             project=self.project,
             user=self.user,
             role='DC')
         forms.create_update_or_delete_project_role(
             self.project.id, self.user, 'PM')
 
-        role = ProjectRole.objects.get(project=self.project, user=self.user)
+        role = models.ProjectRole.objects.get(
+            project=self.project, user=self.user)
         assert role.role == 'PM'
 
     def test_delete_existing_role(self):
         """If role is updated to Pb (public user) the Project Role instance
            should be deleted"""
-        ProjectRole.objects.create(
+        models.ProjectRole.objects.create(
             project=self.project,
             user=self.user,
             role='DC')
         forms.create_update_or_delete_project_role(
             self.project.id, self.user, 'Pb')
-        assert ProjectRole.objects.count() == 0
+        assert models.ProjectRole.objects.count() == 0
 
 
 class ProjectEditPermissionsTest(UserTestCase, TestCase):
@@ -877,27 +880,31 @@ class ProjectEditPermissionsTest(UserTestCase, TestCase):
         self.project = ProjectFactory.create()
 
         self.super_user = UserFactory.create()
-        OrganizationRole.objects.create(user=self.super_user,
-                                        organization=self.project.organization,
-                                        admin=False)
+        models.OrganizationRole.objects.create(
+            user=self.super_user,
+            organization=self.project.organization,
+            admin=False)
         su_role = Role.objects.get(name='superuser')
         self.super_user.assign_policies(su_role)
 
         self.org_admin = UserFactory.create()
-        OrganizationRole.objects.create(user=self.org_admin,
-                                        organization=self.project.organization,
-                                        admin=True)
+        models.OrganizationRole.objects.create(
+            user=self.org_admin,
+            organization=self.project.organization,
+            admin=True)
         self.project_user_1 = UserFactory.create()
-        OrganizationRole.objects.create(user=self.project_user_1,
-                                        organization=self.project.organization,
-                                        admin=False)
-        ProjectRole.objects.create(user=self.project_user_1,
-                                   project=self.project,
-                                   role='DC')
+        models.OrganizationRole.objects.create(
+            user=self.project_user_1,
+            organization=self.project.organization,
+            admin=False)
+        models.ProjectRole.objects.create(user=self.project_user_1,
+                                          project=self.project,
+                                          role='DC')
         self.project_user_2 = UserFactory.create()
-        OrganizationRole.objects.create(user=self.project_user_2,
-                                        organization=self.project.organization,
-                                        admin=False)
+        models.OrganizationRole.objects.create(
+            user=self.project_user_2,
+            organization=self.project.organization,
+            admin=False)
 
     def test_init(self):
         form = forms.ProjectEditPermissions(instance=self.project)
@@ -921,13 +928,13 @@ class ProjectEditPermissionsTest(UserTestCase, TestCase):
         form = forms.ProjectEditPermissions(instance=self.project, data=data)
         form.save()
 
-        role_1 = ProjectRole.objects.get(
+        role_1 = models.ProjectRole.objects.get(
             project=self.project,
             user=self.project_user_1
         )
         assert role_1.role == 'PM'
 
-        role_2 = ProjectRole.objects.get(
+        role_2 = models.ProjectRole.objects.get(
             project=self.project,
             user=self.project_user_2
         )
@@ -1435,3 +1442,125 @@ class SelectDefaultsFormTest(UserTestCase, FileStorageTestCase, TestCase):
         form = forms.SelectDefaultsForm(
             data=self.data, project=self.project, user=self.user)
         assert form.is_valid() is True
+
+
+class LayerGroupFormTest(TestCase):
+    def test_create_wms_without_layers(self):
+        org = OrganizationFactory.create()
+        project = ProjectFactory.create(organization=org)
+        data = {'name': 'Test WMS', 'base_url': 'https://example.com'}
+        form = forms.LayerGroupForm(data=data,
+                                    project=project)
+
+        assert form.is_valid() is True
+        form.save()
+        assert models.LayerGroup.objects.count() == 1
+        layer_group = models.LayerGroup.objects.first()
+        assert layer_group.name == 'Test WMS'
+        assert layer_group.project == project
+        assert layer_group.type == 'wms'
+
+    def test_create_wms_with_layers(self):
+        org = OrganizationFactory.create()
+        project = ProjectFactory.create(organization=org)
+        layers = [
+            {'name': 'layer 1', 'title': 'Layer One'},
+            {'name': 'layer 2', 'title': 'Layer Two'}
+        ]
+        data = {'name': 'Test WMS',
+                'base_url': 'https://example.com',
+                'layers': json.dumps(layers)}
+        form = forms.LayerGroupForm(data=data,
+                                    project=project)
+
+        assert form.is_valid() is True
+        form.save()
+
+        assert models.LayerGroup.objects.count() == 1
+        layer_group = models.LayerGroup.objects.first()
+        assert layer_group.name == 'Test WMS'
+        assert layer_group.project == project
+        assert layer_group.type == 'wms'
+
+        layer_groups = models.Layer.objects.all()
+        assert layer_groups.count() == 2
+        assert all(g.url == data['base_url'] for g in layer_groups)
+        assert all(g.url == data['base_url'] for g in layer_groups)
+
+    def test_update_wms_remove_all_layers(self):
+        org = OrganizationFactory.create()
+        project = ProjectFactory.create(organization=org)
+        layer_group = LayerGroupFactory.create(project=project)
+        data = {'name': 'Test WMS', 'base_url': 'https://example.com'}
+
+        form = forms.LayerGroupForm(instance=layer_group,
+                                    data=data,
+                                    project=project)
+
+        assert form.is_valid() is True
+        form.save()
+
+        layer_group.refresh_from_db()
+        assert layer_group.name == 'Test WMS'
+        assert layer_group.project == project
+        assert layer_group.type == 'wms'
+        assert layer_group.layers.count() == 0
+
+    def test_update_wms_add_new_layers(self):
+        org = OrganizationFactory.create()
+        project = ProjectFactory.create(organization=org)
+        layer_group = LayerGroupFactory.create(project=project)
+        layers = [
+            {'name': 'layer 1', 'title': 'Layer One'},
+            {'name': 'layer 2', 'title': 'Layer Two'}
+        ]
+
+        data = {'name': 'Test WMS',
+                'base_url': 'https://example.com',
+                'layers': json.dumps(layers)}
+        form = forms.LayerGroupForm(instance=layer_group,
+                                    data=data,
+                                    project=project)
+
+        assert form.is_valid() is True
+        form.save()
+
+        layer_group.refresh_from_db()
+        assert layer_group.name == 'Test WMS'
+        assert layer_group.project == project
+        assert layer_group.type == 'wms'
+        layer_groups = layer_group.layers.all()
+        assert layer_groups.count() == 2
+        assert all(g.url == data['base_url'] for g in layer_groups)
+        assert all(g.url == data['base_url'] for g in layer_groups)
+
+    def test_update_wms_add_and_remove_layers(self):
+        org = OrganizationFactory.create()
+        project = ProjectFactory.create(organization=org)
+        layer_group = LayerGroupFactory.create(project=project)
+        LayerFactory.create(group=layer_group)
+
+        layers = [
+            {'name': 'layer 1', 'title': 'Layer One'},
+            {'name': 'layer 2', 'title': 'Layer Two'}
+        ]
+
+        data = {'name': 'Test WMS',
+                'base_url': 'https://example.com',
+                'layers': json.dumps(layers)}
+        form = forms.LayerGroupForm(instance=layer_group,
+                                    data=data,
+                                    project=project)
+
+        assert form.is_valid() is True
+        form.save()
+
+        layer_group.refresh_from_db()
+        assert layer_group.name == 'Test WMS'
+        assert layer_group.project == project
+        assert layer_group.type == 'wms'
+        layer_groups = layer_group.layers.all()
+        assert layer_groups.count() == 2
+        assert all(g.url == data['base_url'] for g in layer_groups)
+        assert all(g.url == data['base_url'] for g in layer_groups)
+        assert layer_group not in layer_groups
