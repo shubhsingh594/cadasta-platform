@@ -1,12 +1,12 @@
 import factory
 
 from core.tests.factories import ExtendedFactory
-from ..models import Organization, OrganizationRole, Project, ProjectRole
+from .. import models
 
 
 class OrganizationFactory(ExtendedFactory):
     class Meta:
-        model = Organization
+        model = models.Organization
 
     name = factory.Sequence(lambda n: "Organization #%s" % n)
     slug = factory.Sequence(lambda n: "organization-%s" % n)
@@ -22,12 +22,13 @@ class OrganizationFactory(ExtendedFactory):
 
         if users:
             for u in users:
-                OrganizationRole.objects.create(organization=self, user=u)
+                models.OrganizationRole.objects.create(organization=self,
+                                                       user=u)
 
 
 class ProjectFactory(ExtendedFactory):
     class Meta:
-        model = Project
+        model = models.Project
 
     name = factory.Sequence(lambda n: "Project #%s" % n)
     slug = factory.Sequence(lambda n: "project-%s" % n)
@@ -45,9 +46,9 @@ class ProjectFactory(ExtendedFactory):
 
         if users:
             for u in users:
-                OrganizationRole.objects.get_or_create(
+                models.OrganizationRole.objects.get_or_create(
                     organization=self.organization, user=u)
-                ProjectRole.objects.create(project=self, user=u)
+                models.ProjectRole.objects.create(project=self, user=u)
 
 
 def clause(effect, action, object=None):
@@ -55,3 +56,23 @@ def clause(effect, action, object=None):
         return {'effect': effect, 'action': action}
     else:
         return {'effect': effect, 'action': action, 'object': object}
+
+
+class LayerGroupFactory(ExtendedFactory):
+    class Meta:
+        model = models.LayerGroup
+
+    name = factory.Sequence(lambda n: "Layer Group #%s" % n)
+    type = 'wms'
+    project = factory.SubFactory(ProjectFactory)
+
+
+class LayerFactory(ExtendedFactory):
+    class Meta:
+        model = models.Layer
+
+    name = factory.Sequence(lambda n: "layer-#%s" % n)
+    title = factory.Sequence(lambda n: "Layer #%s" % n)
+    type = 'wms'
+    group = factory.SubFactory(LayerGroupFactory)
+    url = 'http://example.com'
