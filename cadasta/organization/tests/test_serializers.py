@@ -15,7 +15,7 @@ from core.messages import SANITIZE_ERROR
 from accounts.tests.factories import UserFactory
 from .. import serializers
 from ..models import OrganizationRole, ProjectRole, Project
-from .factories import OrganizationFactory, ProjectFactory
+from . import factories
 
 
 class OrganizationSerializerTest(UserTestCase, TestCase):
@@ -60,14 +60,14 @@ class OrganizationSerializerTest(UserTestCase, TestCase):
 
     def test_users_are_not_serialized(self):
         users = UserFactory.create_batch(2)
-        org = OrganizationFactory.create(add_users=users)
+        org = factories.OrganizationFactory.create(add_users=users)
 
         serializer = serializers.OrganizationSerializer([org], many=True)
         assert 'users' not in serializer.data[0]
 
     def test_users_are_serialized_detail_view(self):
         users = UserFactory.create_batch(2)
-        org = OrganizationFactory.create(add_users=users)
+        org = factories.OrganizationFactory.create(add_users=users)
 
         serializer = serializers.OrganizationSerializer(org, detail=True)
         assert 'users' in serializer.data
@@ -93,7 +93,7 @@ class OrganizationSerializerTest(UserTestCase, TestCase):
         request = APIRequestFactory().post('/')
         user = UserFactory.create()
         setattr(request, 'user', user)
-        org = OrganizationFactory.create(add_users=[user])
+        org = factories.OrganizationFactory.create(add_users=[user])
 
         invalid_names = ('add', 'ADD', 'Add', 'new', 'NEW', 'New')
         data = {'name': random.choice(invalid_names)}
@@ -110,7 +110,7 @@ class OrganizationSerializerTest(UserTestCase, TestCase):
         }
 
     def test_duplicate_organization_name(self):
-        existing_org = OrganizationFactory.create()
+        existing_org = factories.OrganizationFactory.create()
 
         request = APIRequestFactory().post('/')
         user = UserFactory.create()
@@ -128,8 +128,8 @@ class OrganizationSerializerTest(UserTestCase, TestCase):
         }
 
     def test_update_with_duplicate_organization_name(self):
-        org_1 = OrganizationFactory.create()
-        org_2 = OrganizationFactory.create()
+        org_1 = factories.OrganizationFactory.create()
+        org_2 = factories.OrganizationFactory.create()
 
         request = APIRequestFactory().post('/')
         user = UserFactory.create()
@@ -165,7 +165,7 @@ class OrganizationSerializerTest(UserTestCase, TestCase):
 
 class ProjectSerializerTest(TestCase):
     def test_project_is_set(self):
-        organization = OrganizationFactory.create()
+        organization = factories.OrganizationFactory.create()
         project_data = {
             'name': "Project",
             'organization': organization,
@@ -188,7 +188,7 @@ class ProjectSerializerTest(TestCase):
                 project_data['extent'])
 
     def test_project_public_visibility(self):
-        organization = OrganizationFactory.create()
+        organization = factories.OrganizationFactory.create()
         project_data = {
             'name': "Project",
             'organization': organization,
@@ -208,7 +208,7 @@ class ProjectSerializerTest(TestCase):
         assert project_instance.access == 'public'
 
     def test_project_private_visibility(self):
-        organization = OrganizationFactory.create()
+        organization = factories.OrganizationFactory.create()
         project_data = {
             'name': "Project",
             'organization': organization,
@@ -228,7 +228,7 @@ class ProjectSerializerTest(TestCase):
         assert project_instance.access == 'private'
 
     def test_restricted_project_name(self):
-        org = OrganizationFactory.create()
+        org = factories.OrganizationFactory.create()
         invalid_names = ('add', 'ADD', 'Add', 'new', 'NEW', 'New')
         data = {
             'name': random.choice(invalid_names),
@@ -246,8 +246,8 @@ class ProjectSerializerTest(TestCase):
         }
 
     def test_update_with_restricted_project_name(self):
-        org = OrganizationFactory.create()
-        project = ProjectFactory.create(organization=org)
+        org = factories.OrganizationFactory.create()
+        project = factories.ProjectFactory.create(organization=org)
         invalid_names = ('add', 'ADD', 'Add', 'new', 'NEW', 'New')
         data = {'name': random.choice(invalid_names)}
         serializer = serializers.ProjectSerializer(
@@ -263,7 +263,7 @@ class ProjectSerializerTest(TestCase):
         }
 
     def test_duplicate_project_name(self):
-        existing_project = ProjectFactory.create()
+        existing_project = factories.ProjectFactory.create()
         org = existing_project.organization
         data = {
             'name': existing_project.name,
@@ -281,8 +281,8 @@ class ProjectSerializerTest(TestCase):
         }
 
     def test_duplicate_project_name_in_another_org(self):
-        existing_project = ProjectFactory.create()
-        another_org = OrganizationFactory.create()
+        existing_project = factories.ProjectFactory.create()
+        another_org = factories.OrganizationFactory.create()
         data = {
             'name': existing_project.name,
             'organization': another_org,
@@ -299,9 +299,9 @@ class ProjectSerializerTest(TestCase):
         assert Project.objects.count() == 2
 
     def test_update_with_duplicate_project_name(self):
-        project_1 = ProjectFactory.create()
+        project_1 = factories.ProjectFactory.create()
         org = project_1.organization
-        project_2 = ProjectFactory.create(organization=org)
+        project_2 = factories.ProjectFactory.create(organization=org)
         data = {'name': project_1.name}
         serializer = serializers.ProjectSerializer(
             project_2,
@@ -317,7 +317,7 @@ class ProjectSerializerTest(TestCase):
         }
 
     def test_unicode_slug(self):
-        org = OrganizationFactory.create()
+        org = factories.OrganizationFactory.create()
         data = {
             'name': "東京プロジェクト 2016",
             'organization': org,
@@ -334,7 +334,7 @@ class ProjectSerializerTest(TestCase):
         assert project_instance.slug == '東京プロジェクト-2016'
 
     def test_sanitize_stings(self):
-        org = OrganizationFactory.create()
+        org = factories.OrganizationFactory.create()
         data = {
             'name': "<Name>"
         }
@@ -348,7 +348,7 @@ class ProjectSerializerTest(TestCase):
 
 class ProjectGeometrySerializerTest(TestCase):
     def test_method_fields_work(self):
-        project = ProjectFactory.create()
+        project = factories.ProjectFactory.create()
         test_data = serializers.ProjectGeometrySerializer(project).data
 
         assert test_data['properties']['org'] == project.organization.name
@@ -361,7 +361,7 @@ class ProjectGeometrySerializerTest(TestCase):
 class OrganizationUserSerializerTest(UserTestCase, TestCase):
     def test_to_represenation(self):
         user = UserFactory.create()
-        org = OrganizationFactory.create(add_users=[user])
+        org = factories.OrganizationFactory.create(add_users=[user])
         serializer = serializers.OrganizationUserSerializer(
             user,
             context={'organization': org}
@@ -374,7 +374,7 @@ class OrganizationUserSerializerTest(UserTestCase, TestCase):
     def test_list_to_representation(self):
         users = UserFactory.create_batch(2)
         org_admin = UserFactory.create()
-        org = OrganizationFactory.create(add_users=users)
+        org = factories.OrganizationFactory.create(add_users=users)
         OrganizationRole.objects.create(
             user=org_admin, organization=org, admin=True
         )
@@ -392,7 +392,7 @@ class OrganizationUserSerializerTest(UserTestCase, TestCase):
 
     def test_set_roles_with_username(self):
         user = UserFactory.create()
-        org = OrganizationFactory.create()
+        org = factories.OrganizationFactory.create()
         data = {'username': user.username, 'admin': True}
         serializer = serializers.OrganizationUserSerializer(
             data=data,
@@ -410,7 +410,7 @@ class OrganizationUserSerializerTest(UserTestCase, TestCase):
 
     def test_set_roles_with_email(self):
         user = UserFactory.create()
-        org = OrganizationFactory.create()
+        org = factories.OrganizationFactory.create()
         data = {'username': user.email, 'admin': True}
         serializer = serializers.OrganizationUserSerializer(
             data=data,
@@ -427,7 +427,7 @@ class OrganizationUserSerializerTest(UserTestCase, TestCase):
         assert role.admin is True
 
     def test_set_roles_for_user_that_does_not_exist(self):
-        org = OrganizationFactory.create()
+        org = factories.OrganizationFactory.create()
         data = {'username': 'some-user', 'admin': True}
         serializer = serializers.OrganizationUserSerializer(
             data=data, context={'organization': org}
@@ -440,7 +440,7 @@ class OrganizationUserSerializerTest(UserTestCase, TestCase):
                 in serializer.errors['username'])
 
     def test_set_roles_for_duplicate_username(self):
-        org = OrganizationFactory.create()
+        org = factories.OrganizationFactory.create()
         user1 = UserFactory.create(email='some-user@some.com')
         UserFactory.create(email='some-user@some.com')
         data = {'username': user1.email, 'admin': 'true'}
@@ -456,7 +456,7 @@ class OrganizationUserSerializerTest(UserTestCase, TestCase):
 
     def test_set_role_when_role_exists(self):
         user = UserFactory.create()
-        org = OrganizationFactory.create(add_users=[user])
+        org = factories.OrganizationFactory.create(add_users=[user])
         serializer = serializers.OrganizationUserSerializer(
             data={'username': user.email, 'admin': 'True'},
             partial=True,
@@ -468,7 +468,7 @@ class OrganizationUserSerializerTest(UserTestCase, TestCase):
 
     def test_update_roles_for_user(self):
         user = UserFactory.create()
-        org = OrganizationFactory.create(add_users=[user])
+        org = factories.OrganizationFactory.create(add_users=[user])
         serializer = serializers.OrganizationUserSerializer(
             user,
             data={'admin': 'True'},
@@ -485,7 +485,7 @@ class OrganizationUserSerializerTest(UserTestCase, TestCase):
 class ProjectUserSerializerTest(UserTestCase, TestCase):
     def test_to_represenation(self):
         user = UserFactory.create()
-        project = ProjectFactory.create(add_users=[user])
+        project = factories.ProjectFactory.create(add_users=[user])
         serializer = serializers.ProjectUserSerializer(
             user, context={'project': project}
         )
@@ -504,9 +504,10 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
         superuser_role = Role.objects.get(name='superuser')
         superuser.assign_policies(superuser_role)
 
-        org = OrganizationFactory.create(
+        org = factories.OrganizationFactory.create(
             add_users=[superuser, prj_admin, public_user])
-        project = ProjectFactory.create(add_users=users, organization=org)
+        project = factories.ProjectFactory.create(add_users=users,
+                                                  organization=org)
 
         OrganizationRole.objects.create(
             organization=org, user=org_admin, admin=True)
@@ -535,8 +536,8 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
 
     def test_set_roles_for_existing_user(self):
         user = UserFactory.create()
-        org = OrganizationFactory.create(add_users=[user])
-        project = ProjectFactory.create(organization=org)
+        org = factories.OrganizationFactory.create(add_users=[user])
+        project = factories.ProjectFactory.create(organization=org)
         data = {'username': user.username, 'role': 'DC'}
         serializer = serializers.ProjectUserSerializer(
             data=data,
@@ -550,7 +551,7 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
 
     def test_set_roles_for_user_who_is_not_an_org_member(self):
         user = UserFactory.create()
-        project = ProjectFactory.create()
+        project = factories.ProjectFactory.create()
         data = {'username': user.username, 'role': 'DC'}
         serializer = serializers.ProjectUserSerializer(
             data=data,
@@ -564,7 +565,7 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
                 in serializer.errors['username'])
 
     def test_set_roles_for_user_that_does_not_exist(self):
-        project = ProjectFactory.create()
+        project = factories.ProjectFactory.create()
         data = {'username': 'some-user', 'role': 'DC'}
         serializer = serializers.ProjectUserSerializer(
             data=data,
@@ -579,8 +580,8 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
 
     def test_set_role_when_role_exists(self):
         user = UserFactory.create()
-        org = OrganizationFactory.create(add_users=[user])
-        project = ProjectFactory.create(organization=org)
+        org = factories.OrganizationFactory.create(add_users=[user])
+        project = factories.ProjectFactory.create(organization=org)
         ProjectRole.objects.create(user=user, project=project)
         serializer = serializers.ProjectUserSerializer(
             data={'username': user.username, 'role': 'DC'},
@@ -593,7 +594,7 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
 
     def test_update_roles_for_user(self):
         user = UserFactory.create()
-        project = ProjectFactory.create(add_users=[user])
+        project = factories.ProjectFactory.create(add_users=[user])
         data = {'role': 'PM'}
         serializer = serializers.ProjectUserSerializer(
             user,
@@ -609,7 +610,7 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
 
     def test_update_roles_for_user_with_additional_payload(self):
         user = UserFactory.create()
-        project = ProjectFactory.create(add_users=[user])
+        project = factories.ProjectFactory.create(add_users=[user])
         data = {'username': user.username, 'role': 'PM'}
         serializer = serializers.ProjectUserSerializer(
             user,
@@ -625,8 +626,8 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
 
     def test_update_roles_for_organization_user(self):
         user = UserFactory.create()
-        org = OrganizationFactory.create(add_users=[user])
-        project = ProjectFactory.create(organization=org)
+        org = factories.OrganizationFactory.create(add_users=[user])
+        project = factories.ProjectFactory.create(organization=org)
         data = {'role': 'PM'}
         serializer = serializers.ProjectUserSerializer(
             user,
@@ -642,7 +643,7 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
 
     def test_update_roles_for_org_admin(self):
         user = UserFactory.create(username='some-user')
-        project = ProjectFactory.create()
+        project = factories.ProjectFactory.create()
         OrganizationRole.objects.create(organization=project.organization,
                                         user=user,
                                         admin=True)
@@ -664,7 +665,7 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
         superuser_role = Role.objects.get(name='superuser')
         user.assign_policies(superuser_role)
 
-        project = ProjectFactory.create()
+        project = factories.ProjectFactory.create()
         OrganizationRole.objects.create(organization=project.organization,
                                         user=user,
                                         admin=True)
@@ -683,7 +684,7 @@ class ProjectUserSerializerTest(UserTestCase, TestCase):
 
     def test_update_roles_to_public_user(self):
         user = UserFactory.create(username='some-user')
-        project = ProjectFactory.create(add_users=[user])
+        project = factories.ProjectFactory.create(add_users=[user])
         assert (ProjectRole.objects.filter(project=project, user=user).exists()
                 is True)
         data = {'role': 'Pb'}
@@ -710,8 +711,38 @@ class UserAdminSerializerTest(UserTestCase, TestCase):
 
     def test_organizations_are_serialized(self):
         user = UserFactory.create()
-        OrganizationFactory.create(add_users=[user])
-        OrganizationFactory.create(add_users=[user])
+        factories.OrganizationFactory.create(add_users=[user])
+        factories.OrganizationFactory.create(add_users=[user])
 
         serializer = serializers.UserAdminSerializer(user)
         assert 'organizations' in serializer.data
+
+
+class LayerGroupSerializerTest(TestCase):
+    def test_serialize_empty_layer_group(self):
+        layer_group = factories.LayerGroupFactory.create()
+        serializer = serializers.LayerGroupSerializer(layer_group)
+
+        assert serializer.data['name'] == layer_group.name
+        assert serializer.data['type'] == layer_group.type
+        assert len(serializer.data['layers']) == 0
+
+    def test_serialize_wms_layer_group(self):
+        layer_group = factories.LayerGroupFactory.create()
+        factories.LayerFactory.create_batch(2,
+                                            group=layer_group,
+                                            name='rivers',
+                                            title='Rivers',
+                                            type='wms',
+                                            url='https://example.com/wms')
+        serializer = serializers.LayerGroupSerializer(layer_group)
+
+        assert serializer.data['name'] == layer_group.name
+        assert serializer.data['type'] == layer_group.type
+        assert len(serializer.data['layers']) == 2
+
+        layer = serializer.data['layers'][0]
+        assert layer['name'] == 'rivers'
+        assert layer['title'] == 'Rivers'
+        assert layer['type'] == 'wms'
+        assert layer['url'] == 'https://example.com/wms'

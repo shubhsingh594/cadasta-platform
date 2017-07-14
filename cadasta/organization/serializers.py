@@ -11,7 +11,7 @@ from core.form_mixins import SuperUserCheck
 from core import serializers as core_serializers
 from accounts.models import User
 from accounts.serializers import UserSerializer
-from .models import Organization, Project, OrganizationRole, ProjectRole
+from . import models
 from .forms import create_update_or_delete_project_role
 
 
@@ -22,7 +22,7 @@ class OrganizationSerializer(core_serializers.SanitizeFieldSerializer,
     users = UserSerializer(many=True, read_only=True)
 
     class Meta:
-        model = Organization
+        model = models.Organization
         fields = ('id', 'slug', 'name', 'description', 'archived', 'urls',
                   'contacts', 'users',)
         read_only_fields = ('id', 'slug',)
@@ -38,7 +38,7 @@ class OrganizationSerializer(core_serializers.SanitizeFieldSerializer,
     def create(self, *args, **kwargs):
         org = super(OrganizationSerializer, self).create(*args, **kwargs)
 
-        OrganizationRole.objects.create(
+        models.OrganizationRole.objects.create(
             organization=org,
             user=self.context['request'].user,
             admin=True
@@ -79,7 +79,7 @@ class ProjectSerializer(core_serializers.SanitizeFieldSerializer,
             org_slug = self.context['organization'].slug
         else:
             org_slug = self.instance.organization.slug
-        queryset = Project.objects.filter(
+        queryset = models.Project.objects.filter(
             organization__slug=org_slug,
             name=value,
         )
@@ -95,7 +95,7 @@ class ProjectSerializer(core_serializers.SanitizeFieldSerializer,
         return value
 
     class Meta:
-        model = Project
+        model = models.Project
         fields = ('id', 'organization', 'country', 'name', 'description',
                   'archived', 'urls', 'contacts', 'users', 'access', 'slug',
                   'extent',)
@@ -109,7 +109,7 @@ class ProjectSerializer(core_serializers.SanitizeFieldSerializer,
 
     def create(self, validated_data):
         organization = self.context['organization']
-        return Project.objects.create(
+        return models.Project.objects.create(
             organization_id=organization.id,
             **validated_data
         )
@@ -120,7 +120,7 @@ class ProjectGeometrySerializer(geo_serializers.GeoFeatureModelSerializer):
     url = serializers.SerializerMethodField()
 
     class Meta:
-        model = Project
+        model = models.Project
         geo_field = 'extent'
         fields = ('name', 'org', 'url')
 
@@ -202,7 +202,7 @@ class EntityUserSerializer(SuperUserCheck, serializers.Serializer):
 
 class OrganizationUserSerializer(EntityUserSerializer):
     class Meta:
-        role_model = OrganizationRole
+        role_model = models.OrganizationRole
         context_key = 'organization'
         role_key = 'admin'
     admin = serializers.BooleanField()
@@ -217,7 +217,7 @@ class OrganizationUserSerializer(EntityUserSerializer):
         return role_value
 
     def get_roles_object(self, instance):
-        self.role = OrganizationRole.objects.get(
+        self.role = models.OrganizationRole.objects.get(
             user=instance,
             organization=self.context['organization'])
 
@@ -242,7 +242,7 @@ class OrganizationUserSerializer(EntityUserSerializer):
 
 class ProjectUserSerializer(EntityUserSerializer):
     class Meta:
-        role_model = ProjectRole
+        role_model = models.ProjectRole
         context_key = 'project'
         role_key = 'role'
     role = serializers.CharField()
@@ -258,7 +258,7 @@ class ProjectUserSerializer(EntityUserSerializer):
     def validate_username(self, value):
         try:
             super(ProjectUserSerializer, self).validate_username(value)
-        except OrganizationRole.DoesNotExist:
+        except models.OrganizationRole.DoesNotExist:
             raise serializers.ValidationError(
                 _("User {username} is not member of the project\'s "
                   "organization").format(username=value))
@@ -287,7 +287,7 @@ class ProjectUserSerializer(EntityUserSerializer):
         try:
             role = self.get_roles_object(instance)
             return self.get_role_key(role)
-        except ProjectRole.DoesNotExist:
+        except models.ProjectRole.DoesNotExist:
             return 'Pb'
 
     def set_roles(self, data):
@@ -318,3 +318,19 @@ class UserAdminSerializer(UserSerializer):
         model = User
         fields = ('username', 'full_name', 'email',
                   'organizations', 'last_login', 'is_active')
+
+
+class LayerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Layer
+        fields = ('name', 'title', 'type', 'url', )
+        read_only_fields = ('name', 'title', 'type', 'url', )
+
+
+class LayerGroupSerializer(serializers.ModelSerializer):
+    layers = LayerSerializer(read_only=True, many=True)
+
+    class Meta:
+        model = models.LayerGroup
+        fields = ('name', 'type', 'layers', )
+        read_only_fields = ('name', 'type', 'layers', )
