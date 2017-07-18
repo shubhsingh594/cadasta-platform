@@ -290,3 +290,17 @@ class ProjectUsersDetail(APIPermissionRequiredMixin,
         ).delete()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class LayerGroupsList(APIPermissionRequiredMixin,
+                      mixins.ProjectMixin,
+                      generics.ListAPIView):
+    serializer_class = serializers.LayerGroupSerializer
+
+    permission_required = 'project.view'
+
+    def get_perms_objects(self):
+        return [self.get_project()]
+
+    def get_queryset(self, *args, **kwargs):
+        return self.get_project().layer_groups.all()
