@@ -4,6 +4,11 @@
 {% block page_title %}{% trans "Resources" %} | {% endblock %}
 {% block left-nav %}resources{% endblock %}
 
+{% block extra_head %}
+<script crossorigin src="https://unpkg.com/react@15/dist/react.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@15/dist/react-dom.min.js"></script>
+{% endblock %}
+
 {% block content %}
 
 <div class="col-md-12 content-single">
@@ -25,7 +30,7 @@
               <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> {% trans "Attach" %}</a>
           </div>
           {% endif %}
-          {% include 'resources/table.html' %}
+          <div id="paginated-table"></div>
         </div>
       </div>
     </div>
@@ -35,4 +40,27 @@
 
 {% block form_modal %}
 {% include 'resources/modal_unarchive.html' with unarchive_url="#" %}
+{% endblock %}
+
+{% block extra_script %}
+<script src="/static/dist/paginated-table.js"></script>
+<script type="text/javascript">
+  var context = {
+    layout: [
+      { title: "{% trans 'Resources' %}", columns: 4 },
+      { title: "{% trans 'Type' %}", columns: 1 },
+      { title: "{% trans 'Contributor' %}", columns: 2 },
+      { title: "{% trans 'Last Updated' %}", columns: 2 },
+      { title: "{% trans 'Attached to' %}", columns: 2 },
+      { title: null, columns: 1 },
+    ],
+    url: "{% url 'api:v1:resources:project_list' project=object.slug organization=object.organization.slug %}",
+    limit: 10
+  }
+
+  ReactDOM.render(
+    React.createElement(PaginatedTable, context, null),
+    document.getElementById('paginated-table')
+  );
+</script>
 {% endblock %}
