@@ -10,6 +10,7 @@ from core.mixins import (LoginPermissionRequiredMixin, PermissionRequiredMixin,
                          update_permissions)
 from core.util import random_id
 from core.views import mixins as core_mixins
+from django.contrib import messages
 from django.conf import settings
 from django.core.files.storage import DefaultStorage, FileSystemStorage
 from django.core.urlresolvers import reverse
@@ -32,6 +33,7 @@ from .. import messages as error_messages
 from .. import forms
 from ..importers.exceptions import DataImportError
 from ..models import Organization, OrganizationRole, Project, ProjectRole
+from ..tasks import schedule_export
 
 
 class OrganizationList(PermissionRequiredMixin, generic.ListView):
@@ -756,41 +758,13 @@ class ProjectDataDownload(mixins.ProjectMixin,
         if not form.is_valid():
             return self.form_invalid(form)
 
-        # TODO: Abstract to function
-        from rest_framework_tmp_scoped_token import TokenManager
-        endpoint = '/api/v1/organizations/{}/projects/{}'
-        endpoint = endpoint.format(organization, project)
-        user = request.user
-        token = TokenManager(
-            user=user,
-            endpoints={'GET': [endpoint]},
-            max_age=60 * 60 * 12,  # 12 hr expiration,
-            recipient='export-service')
-        token = token.generate_token()
         output_type = form.cleaned_data['type']
-        payload = {
-            'org_slug': organization,
-            'project_slug': project,
-            'api_key': token,
-            'type': output_type,
-        }
-
-        from tasks.models import BackgroundTask
-        BackgroundTask.objects.all().delete()
-        from resources.tasks import export, email, email_err
-        job = "export of {}".format(self.object.name)
-
-        export.apply_async(
-            kwargs=payload,
-            link=email.s(job, user.email),
-            link_error=email_err.s(job, user.email)
-        )
-
-        from django.contrib import messages
+        schedule_export(
+            organization, project, request.user,
+            output_type, self.object.name )
         messages.add_message(self.request, messages.SUCCESS,
                      _("Export in %r format scheduled." % output_type))  # TODO: Refine messaging
         return redirect('organization:project-download',
-        # return redirect('organization:project-dashboard',
                         organization=organization,
                         project=project)
 

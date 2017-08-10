@@ -61,7 +61,8 @@ class BackgroundTask(RandomIDModel):
         validators=[utils.is_type(dict)])
 
     related_content_type = models.ForeignKey(
-        ContentType, on_delete=models.CASCADE, null=True, blank=True)
+        ContentType, on_delete=models.CASCADE, related_name='+',
+        null=True, blank=True)
     related_object_id = models.PositiveIntegerField(null=True, blank=True)
     related_object = GenericForeignKey(
         'related_content_type', 'related_object_id')
