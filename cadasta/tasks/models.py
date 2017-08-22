@@ -1,5 +1,4 @@
 from celery import states
-from core.models import RandomIDModel
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
@@ -7,6 +6,9 @@ from django.contrib.postgres.fields import JSONField
 from django.db import models, transaction
 from django.utils.translation import ugettext_lazy as _
 from django.utils.functional import lazy
+
+from core.util import ID_FIELD_LENGTH
+from core.models import RandomIDModel
 
 from .celery import app
 from .utils import fields as utils
@@ -63,7 +65,8 @@ class BackgroundTask(RandomIDModel):
     related_content_type = models.ForeignKey(
         ContentType, on_delete=models.CASCADE, related_name='+',
         null=True, blank=True)
-    related_object_id = models.PositiveIntegerField(null=True, blank=True)
+    related_object_id = models.CharField(
+        max_length=ID_FIELD_LENGTH, null=True, blank=True)
     related_object = GenericForeignKey(
         'related_content_type', 'related_object_id')
 

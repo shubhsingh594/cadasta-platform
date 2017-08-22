@@ -16,7 +16,6 @@ from django.core.files.storage import DefaultStorage, FileSystemStorage
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Sum, When, Case, IntegerField
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.translation import ugettext as _
 from questionnaires.exceptions import InvalidQuestionnaire
@@ -33,7 +32,7 @@ from .. import messages as error_messages
 from .. import forms
 from ..importers.exceptions import DataImportError
 from ..models import Organization, OrganizationRole, Project, ProjectRole
-from ..tasks import schedule_export
+from ..tasks import schedule_project_export
 
 
 class OrganizationList(PermissionRequiredMixin, generic.ListView):
@@ -759,11 +758,11 @@ class ProjectDataDownload(mixins.ProjectMixin,
             return self.form_invalid(form)
 
         output_type = form.cleaned_data['type']
-        schedule_export(
-            organization, project, request.user,
-            output_type, self.object.name )
-        messages.add_message(self.request, messages.SUCCESS,
-                     _("Export in %r format scheduled." % output_type))  # TODO: Refine messaging
+        schedule_project_export(self.object, request.user, output_type)
+        messages.add_message(
+            self.request, messages.SUCCESS,
+            # TODO: Refine messaging
+            _("Export in %r format scheduled." % output_type))
         return redirect('organization:project-download',
                         organization=organization,
                         project=project)

@@ -1,3 +1,4 @@
+from django.contrib.contenttypes.models import ContentType
 from django.core.urlresolvers import reverse
 from rest_framework_tmp_scoped_token import TokenManager
 
@@ -19,10 +20,12 @@ def email_err(task, to_address):
     pass
 
 
-def schedule_export(organization, project, user, output_type, project_name):
+def schedule_project_export(project, user, output_type):
+    org_slug = project.organization.slug
+    prj_slug = project.slug
     endpoint = reverse(
         'api:v1:organization:project_detail',
-        kwargs={'organization': organization, 'project': project})
+        kwargs={'organization': org_slug, 'project': prj_slug})
     token = TokenManager(
         user=user,
         endpoints={'GET': [endpoint]},
@@ -31,14 +34,14 @@ def schedule_export(organization, project, user, output_type, project_name):
     token = token.generate_token()
 
     payload = {
-        'org_slug': organization,
-        'project_slug': project,
+        'org_slug': org_slug,
+        'project_slug': prj_slug,
         'api_key': token,
         'output_type': output_type,
     }
-    job = "export of {}".format(project_name)
     return export.apply_async(
         kwargs=payload,
-        link=email.s(job, user.email),
-        link_error=email_err.s(job, user.email)
+        creator_id=user.id,
+        related_content_type_id=ContentType.objects.get_for_model(project).id,
+        related_object_id=project.id
     )

@@ -56,6 +56,11 @@ class Worker(ConsumerMixin):
         logger.debug("Handling task message %r", body)
         args, kwargs, options = message.decode()
         task_id = message.headers['id']
+        task_type = message.headers['task']
+        if task_type == 'celery.chord_unlock':
+            # Chord unlock tasks don't record their results, so will always
+            # be 'PENDING'. Best to just ignore.
+            return logger.debug("Ignoring task of type %r", task_type)
 
         # Add default properties
         option_keys = ['eta', 'expires', 'retries', 'timelimit']
@@ -63,15 +68,20 @@ class Worker(ConsumerMixin):
             **{k: v for k, v in message.headers.items()
                if k in option_keys and v not in (None, [None, None])})
 
+        props = message.properties
         _, created = BackgroundTask.objects.get_or_create(
             task_id=task_id,
             defaults={
-                'type': message.headers['task'],
+                'type': task_type,
                 'input_args': args,
                 'input_kwargs': kwargs,
-                'options': message.properties,
+                'options': props,
                 'parent_id': message.headers['parent_id'],
                 'root_id': message.headers['root_id'],
+                'creator_id': props.get('creator_id'),
+                'related_content_type_id':
+                    props.get('related_content_type_id'),
+                'related_object_id': props.get('related_object_id'),
             }
         )
         if created:
