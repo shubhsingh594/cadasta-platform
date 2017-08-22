@@ -4,6 +4,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.postgres.fields import JSONField
 from django.db import models, transaction
+from django.db.models.expressions import F
 from django.utils.translation import ugettext_lazy as _
 from django.utils.functional import lazy
 
@@ -116,6 +117,19 @@ class BackgroundTask(RandomIDModel):
         self.input['kwargs'] = value
 
     @property
-    def failed(self):
-        return self.__class__.objects.filter(
-            parent_id=self.root_id, result__status='FAILURE').exists()
+    def overall_status(self):
+        tasks = self.__class__.objects.filter(root_id=self.root_id)
+        tasks = tasks.annotate(_status=F('result__status'))
+        tasks = tasks.exclude(_status=None)
+        statuses = tasks.order_by('_status').values_list('_status', flat=True)
+        statuses = statuses.distinct().exclude()
+        if len(statuses) == 1:
+            return statuses[0] or 'PENDING'
+        if 'FAILURE' in statuses:
+            return 'FAILURE'
+        return 'STARTED'
+
+        # test:
+        #  - 2 tasks, one success and other no results. 'STARTED'
+        #  - 2 tasks, one success and other failed. 'FAILURE'
+        #  - 1 task, no results. 'PENDING'
