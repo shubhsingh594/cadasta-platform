@@ -118,7 +118,7 @@ class BackgroundTask(RandomIDModel):
 
     @property
     def overall_status(self):
-        tasks = self.__class__.objects.filter(root_id=self.root_id)
+        tasks = self.__class__._default_manager.filter(root_id=self.root_id)
         tasks = tasks.annotate(_status=F('result__status'))
         tasks = tasks.exclude(_status=None)
         statuses = tasks.order_by('_status').values_list('_status', flat=True)
