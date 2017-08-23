@@ -19,7 +19,7 @@ class SpatialUnitSerializer(core_serializers.JSONAttrsSerializer,
         context_key = 'project'
         geo_field = 'geometry'
         id_field = False
-        fields = ('id', 'geometry', 'type', 'attributes', )
+        fields = ('id', 'geometry', 'type', 'attributes', 'area',)
         read_only_fields = ('id', )
 
     def validate_type(self, value):
