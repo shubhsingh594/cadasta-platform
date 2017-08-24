@@ -759,10 +759,16 @@ class ProjectDataDownload(mixins.ProjectMixin,
 
         output_type = form.cleaned_data['type']
         schedule_project_export(self.object, request.user, output_type)
+
+        message = {
+            'res': "Scheduled export of project resources.",
+            'xls': "Scheduled export of project records in XLS format.",
+            'shp': "Scheduled export of project locations as Shapefiles.",
+            'all': "Scheduled export of project resources and records.",
+        }
         messages.add_message(
             self.request, messages.SUCCESS,
-            # TODO: Refine messaging
-            _("Export in %r format scheduled." % output_type))
+            _(message[output_type]))
         return redirect('organization:project-dashboard',
                         organization=organization,
                         project=project)
