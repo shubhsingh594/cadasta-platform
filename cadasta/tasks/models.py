@@ -118,10 +118,9 @@ class BackgroundTask(RandomIDModel):
 
     @property
     def overall_status(self):
-        tasks = self.descendents.annotate(_status=F('result__status'))
-        tasks = tasks.exclude(_status=None).exclude(type='celery.chord_unlock')
-        statuses = tasks.order_by('_status').values_list('_status', flat=True)
-        statuses = statuses.distinct().exclude()
+        tasks = self.descendents.exclude(type='celery.chord_unlock')
+        tasks = tasks.annotate(_status=F('result__status')).order_by('_status')
+        statuses = tasks.values_list('_status', flat=True).distinct()
         if len(statuses) == 1:
             return statuses[0] or 'PENDING'
         if 'FAILURE' in statuses:
