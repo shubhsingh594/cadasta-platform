@@ -455,8 +455,10 @@ class ProjectDashboard(PermissionRequiredMixin,
         context['members'] = members
 
         exports = self.object.tasks.filter(type=export.name)
+        exports = exports.select_related('result').order_by('-created_date')
         last_week = timezone.now() - timezone.timedelta(days=7)
-        context['past_exports'] = exports.filter(created_date__gte=last_week)
+        exports = exports.filter(created_date__gte=last_week)[:5]
+        context['recent_exports'] = exports
         try:
             context['questionnaire'] = Questionnaire.objects.get(
                 id=self.object.current_questionnaire)
