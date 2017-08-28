@@ -30,7 +30,10 @@ class TestConsumers(TestCase):
             'lang': 'py',
             'root_id': '486e8738-a9ef-475a-b8e1-158e987f4ae6',
             'argsrepr': '()',
-            'id': '486e8738-a9ef-475a-b8e1-158e987f4ae6'
+            'id': '486e8738-a9ef-475a-b8e1-158e987f4ae6',
+            'creator_id': 1,
+            'related_content_type_id': 2,
+            'related_object_id': 3,
         }
         return MagicMock(
             headers=headers,
@@ -121,7 +124,10 @@ class TestConsumers(TestCase):
                 'input_kwargs': {},
                 'input_args': [],
                 'options': {'retries': 0},
-                'parent_id': None
+                'parent_id': None,
+                'creator_id': 1,
+                'related_content_type_id': 2,
+                'related_object_id': 3,
             },
             task_id='486e8738-a9ef-475a-b8e1-158e987f4ae6'
         )
@@ -148,7 +154,10 @@ class TestConsumers(TestCase):
                 'input_kwargs': {},
                 'input_args': [],
                 'options': {'retries': 0},
-                'parent_id': None
+                'parent_id': None,
+                'creator_id': 1,
+                'related_content_type_id': 2,
+                'related_object_id': 3,
             },
             task_id='486e8738-a9ef-475a-b8e1-158e987f4ae6'
         )
