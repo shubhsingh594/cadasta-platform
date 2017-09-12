@@ -31,9 +31,6 @@ class TestConsumers(TestCase):
             'root_id': '486e8738-a9ef-475a-b8e1-158e987f4ae6',
             'argsrepr': '()',
             'id': '486e8738-a9ef-475a-b8e1-158e987f4ae6',
-            'creator_id': 1,
-            'related_content_type_id': 2,
-            'related_object_id': 3,
         }
         return MagicMock(
             headers=headers,
@@ -43,7 +40,11 @@ class TestConsumers(TestCase):
                  'errbacks': None, 'chord': None}
             ],
             decode=MagicMock(return_value=(args, kwargs, headers)),
-            properties={}
+            properties={
+                'creator_id': 1,
+                'related_content_type_id': 2,
+                'related_object_id': 3,
+            }
         )
 
     @staticmethod
@@ -123,7 +124,12 @@ class TestConsumers(TestCase):
                 'root_id': '486e8738-a9ef-475a-b8e1-158e987f4ae6',
                 'input_kwargs': {},
                 'input_args': [],
-                'options': {'retries': 0},
+                'options': {
+                    'retries': 0,
+                    'creator_id': 1,
+                    'related_content_type_id': 2,
+                    'related_object_id': 3,
+                },
                 'parent_id': None,
                 'creator_id': 1,
                 'related_content_type_id': 2,
@@ -153,7 +159,12 @@ class TestConsumers(TestCase):
                 'root_id': '486e8738-a9ef-475a-b8e1-158e987f4ae6',
                 'input_kwargs': {},
                 'input_args': [],
-                'options': {'retries': 0},
+                'options': {
+                    'retries': 0,
+                    'creator_id': 1,
+                    'related_content_type_id': 2,
+                    'related_object_id': 3,
+                },
                 'parent_id': None,
                 'creator_id': 1,
                 'related_content_type_id': 2,
