@@ -10,16 +10,6 @@ def export(org_slug, project_slug, api_key, output_type):
     pass
 
 
-@app.task(name='msg.email')
-def email(task, to_address):
-    pass
-
-
-@app.task(name='msg.email_err')
-def email_err(task, to_address):
-    pass
-
-
 def schedule_project_export(project, user, output_type):
     org_slug = project.organization.slug
     prj_slug = project.slug
