@@ -4,11 +4,18 @@ from django.utils.translation import ugettext as _
 from rest_framework import serializers
 
 from . import models
-from core.serializers import FieldSelectorSerializer
+from core import serializers as core_serializers
+from .choices import TENURE_RELATIONSHIP_TYPES
 from spatial.serializers import SpatialUnitSerializer
+from core.form_mixins import get_types
 
 
-class PartySerializer(FieldSelectorSerializer, serializers.ModelSerializer):
+class PartySerializer(core_serializers.JSONAttrsSerializer,
+                      core_serializers.SanitizeFieldSerializer,
+                      core_serializers.FieldSelectorSerializer,
+                      serializers.ModelSerializer):
+    attrs_selector = 'type'
+
     class Meta:
         model = models.Party
         fields = ('id', 'name', 'type', 'attributes', )
@@ -66,14 +73,31 @@ class PartyRelationshipNestedSerializer(serializers.ModelSerializer):
         return 'party'
 
 
-class TenureRelationshipSerializer(serializers.ModelSerializer):
+class TenureRelationshipSerializer(
+        core_serializers.JSONAttrsSerializer,
+        core_serializers.SanitizeFieldSerializer,
+        serializers.ModelSerializer):
 
     class Meta:
         model = models.TenureRelationship
         fields = ('id', 'party', 'spatial_unit', 'tenure_type', 'attributes')
         read_only_fields = ('id',)
 
+    def validate_tenure_type(self, value):
+        prj = self.context['project']
+        allowed_types = get_types('tenure_type',
+                                  TENURE_RELATIONSHIP_TYPES,
+                                  questionnaire_id=prj.current_questionnaire)
+
+        if value not in allowed_types:
+            msg = "'{}' is not a valid choice for field 'tenure_type'."
+            raise serializers.ValidationError(msg.format(value))
+
+        return value
+
     def validate(self, data):
+        data = super().validate(data)
+
         if self.instance:
             party = data.get('party', self.instance.party)
             spatial_unit = data.get('spatial_unit', self.instance.spatial_unit)
