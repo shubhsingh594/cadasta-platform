@@ -18,7 +18,8 @@ class ContentObjectSerializer(serializers.ModelSerializer):
 
 class ResourceSerializer(SanitizeFieldSerializer, serializers.ModelSerializer):
     file = S3Field()
-    links = ContentObjectSerializer(many=True, source='content_objects')
+    links = ContentObjectSerializer(
+        many=True, required=False, source='content_objects')
 
     class Meta:
         model = Resource
