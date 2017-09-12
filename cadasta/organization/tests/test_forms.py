@@ -1,7 +1,5 @@
 import random
 from string import ascii_lowercase
-from unittest.mock import patch
-from zipfile import ZipFile
 
 import pytest
 from pytest import raises
@@ -9,17 +7,12 @@ from pytest import raises
 from accounts.tests.factories import UserFactory
 from core.tests.utils.cases import FileStorageTestCase, UserTestCase
 from core.tests.utils.files import make_dirs  # noqa
-from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.forms.utils import ErrorDict
 from django.test import TestCase
-from jsonattrs.models import Attribute, AttributeType, Schema
-from party.tests.factories import PartyFactory, TenureRelationshipFactory
 from questionnaires.exceptions import InvalidQuestionnaire
 from questionnaires.tests.factories import QuestionnaireFactory
-from resources.tests.factories import ResourceFactory
 from resources.tests.utils import clear_temp  # noqa
-from resources.utils.io import ensure_dirs
 from spatial.tests.factories import SpatialUnitFactory
 from tutelary.models import Role
 

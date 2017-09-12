@@ -65,8 +65,8 @@ class SpatialRelationshipListAPITest(APITestCase, UserTestCase, TestCase):
         }
 
     def test_full_list(self):
-        SpatialRelationshipFactory.create_batch(2,
-            project=self.prj, su1=self.su1, su2=self.su2)
+        SpatialRelationshipFactory.create_batch(
+            2, project=self.prj, su1=self.su1, su2=self.su2)
         response = self.request(user=self.user)
         assert response.status_code == 200
         assert len(response.content['results']) == 2

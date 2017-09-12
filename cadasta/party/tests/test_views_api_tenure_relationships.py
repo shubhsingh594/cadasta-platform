@@ -69,8 +69,8 @@ class TenureRelationshipListTestCase(APITestCase, UserTestCase, TestCase):
         }
 
     def test_full_list(self):
-        TenureRelationshipFactory.create_batch(2,
-            project=self.prj, party=self.party1, spatial_unit=self.su2)
+        TenureRelationshipFactory.create_batch(
+            2, project=self.prj, party=self.party1, spatial_unit=self.su2)
         response = self.request(user=self.user)
         assert response.status_code == 200
         assert len(response.content['results']) == 2

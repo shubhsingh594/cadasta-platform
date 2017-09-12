@@ -196,7 +196,7 @@ class Project(ResourceModelMixin, SlugModel, RandomIDModel):
         max_length=24, null=True, blank=True
     )
     area = models.FloatField(default=0)
-    
+
     tasks = GenericRelation(
         'tasks.BackgroundTask',
         content_type_field='related_content_type',

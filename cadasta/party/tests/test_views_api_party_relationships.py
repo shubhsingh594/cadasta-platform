@@ -71,8 +71,8 @@ class PartyRelationshipListAPITest(APITestCase, UserTestCase, TestCase):
         }
 
     def test_full_list(self):
-        PartyRelationshipFactory.create_batch(2,
-            project=self.prj, party1=self.party1, party2=self.party2)
+        PartyRelationshipFactory.create_batch(
+            2, project=self.prj, party1=self.party1, party2=self.party2)
         response = self.request(user=self.user)
         assert response.status_code == 200
         assert len(response.content['results']) == 2

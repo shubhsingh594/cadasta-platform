@@ -8,8 +8,8 @@ from .models import ContentObject, Resource, SpatialResource
 
 
 class ContentObjectSerializer(serializers.ModelSerializer):
-    id = serializers.CharField(source='object_id')  # TODO: Can we name this better?
-    type = serializers.CharField(source='content_type.model')  # TODO: Can we name this better?
+    id = serializers.CharField(source='object_id')
+    type = serializers.CharField(source='content_type.model')
 
     class Meta:
         model = ContentObject
