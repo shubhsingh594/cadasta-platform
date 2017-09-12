@@ -308,7 +308,7 @@
                               </span>
                             </td>
                             <td>
-                              {% if task.result.status == 'SUCCESS' %}
+                              {% if task.overall_status == 'SUCCESS' %}
                                 <ul class="list-inline">
                                 {% for result in task.overall_results %}
                                   {% for link in result.links %}

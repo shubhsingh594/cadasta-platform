@@ -122,6 +122,8 @@ class BackgroundTask(RandomIDModel):
         tasks = tasks.annotate(_status=F('result__status')).order_by('_status')
         statuses = tasks.values_list('_status', flat=True).distinct()
         if len(statuses) == 1:
+            # It's possible for all statuses to equal None, in which case we
+            # can call them 'PENDING'
             return statuses[0] or 'PENDING'
         if 'FAILURE' in statuses:
             return 'FAILURE'
