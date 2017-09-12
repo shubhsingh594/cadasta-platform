@@ -1,5 +1,6 @@
 import json
 import os
+from unittest.mock import patch
 
 import pytest
 
@@ -1408,8 +1409,7 @@ class ProjectDataDownloadTest(ViewTestCase, UserTestCase, TestCase):
     def setup_template_context(self):
         return {'project': self.project,
                 'object': self.project,
-                'form': forms.DownloadForm(project=self.project,
-                                           user=self.user),
+                'form': forms.DownloadForm(),
                 'is_allowed_import': True}
 
     def test_get_with_authorized_user(self):
@@ -1430,15 +1430,20 @@ class ProjectDataDownloadTest(ViewTestCase, UserTestCase, TestCase):
         assert response.status_code == 302
         assert '/account/login/' in response.location
 
-    def test_post_with_authorized_user(self):
+    @patch('organization.views.default.schedule_project_export')
+    def test_post_with_authorized_user(self, schedule_export):
         assign_policies(self.user)
         response = self.request(user=self.user, method='POST')
-        assert response.status_code == 200
-        assert (response.headers['content-disposition'][1] ==
-                'attachment; filename={}.xlsx'.format(self.project.slug))
-        assert (response.headers['content-type'][1] ==
-                'application/vnd.openxmlformats-officedocument.'
-                'spreadsheetml.sheet')
+        assert response.status_code == 302
+        assert response.location == reverse(
+            'organization:project-dashboard',
+            kwargs={
+                'organization': self.project.organization.slug,
+                'project': self.project.slug
+            }
+        )
+        schedule_export.assert_called_once_with(
+            self.project, self.user, self.post_data['type'])
 
     def test_post_with_unauthorized_user(self):
         response = self.request(user=self.user, method='POST')

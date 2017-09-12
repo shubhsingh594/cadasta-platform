@@ -26,7 +26,6 @@ from questionnaires.models import Questionnaire
 from resources.models import ContentObject, Resource
 from party.choices import TENURE_RELATIONSHIP_TYPES
 from spatial.choices import TYPE_CHOICES
-from django.contrib import messages
 
 from . import mixins
 from ..choices import ROLE_CHOICES
