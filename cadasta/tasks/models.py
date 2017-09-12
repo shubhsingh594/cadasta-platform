@@ -118,9 +118,8 @@ class BackgroundTask(RandomIDModel):
 
     @property
     def overall_status(self):
-        tasks = self.__class__._default_manager.filter(root_id=self.root_id)
-        tasks = tasks.annotate(_status=F('result__status'))
-        tasks = tasks.exclude(_status=None)
+        tasks = self.descendents.annotate(_status=F('result__status'))
+        tasks = tasks.exclude(_status=None).exclude(type='celery.chord_unlock')
         statuses = tasks.order_by('_status').values_list('_status', flat=True)
         statuses = statuses.distinct().exclude()
         if len(statuses) == 1:
@@ -128,6 +127,11 @@ class BackgroundTask(RandomIDModel):
         if 'FAILURE' in statuses:
             return 'FAILURE'
         return 'STARTED'
+
+    @property
+    def overall_results(self):
+        results = self.descendents.filter(options__is_result=True)
+        return results.values_list('result__result', flat=True)
 
         # test:
         #  - 2 tasks, one success and other no results. 'STARTED'

@@ -2,14 +2,7 @@ import importlib
 import os
 from collections import OrderedDict
 
-import core.views.generic as generic
 import django.views.generic as base_generic
-import formtools.wizard.views as wizard
-from accounts.models import User
-from core.mixins import (LoginPermissionRequiredMixin, PermissionRequiredMixin,
-                         update_permissions)
-from core.util import random_id
-from core.views import mixins as core_mixins
 from django.contrib import messages
 from django.conf import settings
 from django.core.files.storage import DefaultStorage, FileSystemStorage
@@ -18,10 +11,19 @@ from django.db import transaction
 from django.db.models import Sum, When, Case, IntegerField
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.translation import ugettext as _
+from django.utils import timezone
+
+from accounts.models import User
+import core.views.generic as generic
+from core.mixins import (LoginPermissionRequiredMixin, PermissionRequiredMixin,
+                         update_permissions)
+from core.util import random_id
+from core.views import mixins as core_mixins
+from core.form_mixins import get_types
+import formtools.wizard.views as wizard
 from questionnaires.exceptions import InvalidQuestionnaire
 from questionnaires.models import Questionnaire
 from resources.models import ContentObject, Resource
-from core.form_mixins import get_types
 from party.choices import TENURE_RELATIONSHIP_TYPES
 from spatial.choices import TYPE_CHOICES
 from django.contrib import messages
@@ -32,7 +34,7 @@ from .. import messages as error_messages
 from .. import forms
 from ..importers.exceptions import DataImportError
 from ..models import Organization, OrganizationRole, Project, ProjectRole
-from ..tasks import schedule_project_export
+from ..tasks import schedule_project_export, export
 
 
 class OrganizationList(PermissionRequiredMixin, generic.ListView):
@@ -451,6 +453,10 @@ class ProjectDashboard(PermissionRequiredMixin,
         context['num_parties'] = num_parties
         context['num_resources'] = num_resources
         context['members'] = members
+
+        exports = self.object.tasks.filter(type=export.name)
+        last_week = timezone.now() - timezone.timedelta(days=7)
+        context['past_exports'] = exports.filter(created_date__gte=last_week)
         try:
             context['questionnaire'] = Questionnaire.objects.get(
                 id=self.object.current_questionnaire)
@@ -745,12 +751,6 @@ class ProjectDataDownload(mixins.ProjectMixin,
     def get_object(self):
         return self.get_project()
 
-    def get_form_kwargs(self, *args, **kwargs):
-        kwargs = super().get_form_kwargs(*args, **kwargs)
-        kwargs['project'] = self.object
-        kwargs['user'] = self.request.user
-        return kwargs
-
     def post(self, request, organization, project):
         self.object = self.get_object()
         form = self.get_form()
@@ -763,7 +763,7 @@ class ProjectDataDownload(mixins.ProjectMixin,
             self.request, messages.SUCCESS,
             # TODO: Refine messaging
             _("Export in %r format scheduled." % output_type))
-        return redirect('organization:project-download',
+        return redirect('organization:project-dashboard',
                         organization=organization,
                         project=project)
 

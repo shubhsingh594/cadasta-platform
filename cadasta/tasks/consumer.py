@@ -57,10 +57,6 @@ class Worker(ConsumerMixin):
         args, kwargs, options = message.decode()
         task_id = message.headers['id']
         task_type = message.headers['task']
-        if task_type == 'celery.chord_unlock':
-            # Chord unlock tasks don't record their results, so will always
-            # be 'PENDING'. Best to just ignore.
-            return logger.debug("Ignoring task of type %r", task_type)
 
         # Add default properties
         option_keys = ['eta', 'expires', 'retries', 'timelimit']
