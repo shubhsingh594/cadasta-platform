@@ -5,7 +5,7 @@ from rest_framework_tmp_scoped_token import TokenManager
 from tasks.celery import app
 
 
-@app.task(name='export.export')
+@app.task(name='export.project')
 def export(org_slug, project_slug, api_key, output_type):
     pass
 
