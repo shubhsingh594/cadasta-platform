@@ -6,10 +6,19 @@ from django.test import TestCase
 from accounts.tests.factories import UserFactory
 
 from .factories import ProjectFactory
-from ..tasks import schedule_project_export
+from ..tasks import schedule_project_export, export
 
 
 class TaskTest(TestCase):
+
+    def test_export_signature(self):
+        kwargs = {
+            'org_slug': 'my-org',
+            'project_slug': 'my-proj',
+            'api_key': 'a-key',
+            'output_type': 'all',
+        }
+        export(**kwargs)
 
     @patch('organization.tasks.TokenManager')
     @patch('organization.tasks.export')
