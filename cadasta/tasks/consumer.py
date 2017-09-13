@@ -57,7 +57,7 @@ class Worker(ConsumerMixin):
         task_id = message.headers['id']
         task_type = message.headers['task']
 
-        # Add default properties
+        # Add additional option data from headers to properties
         option_keys = ['eta', 'expires', 'retries', 'timelimit']
         message.properties.update(
             **{k: v for k, v in message.headers.items()
