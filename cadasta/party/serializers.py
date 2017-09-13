@@ -58,7 +58,7 @@ class PartyRelationshipSerializer(serializers.ModelSerializer):
             project=project, **validated_data)
 
 
-class PartyRelationshipNestedSerializer(serializers.ModelSerializer):
+class PartyRelationshipDetailSerializer(serializers.ModelSerializer):
 
     party1 = PartySerializer(fields=('id', 'name', 'type'))
     party2 = PartySerializer(fields=('id', 'name', 'type'))
@@ -118,7 +118,7 @@ class TenureRelationshipSerializer(
             project=project, **validated_data)
 
 
-class TenureRelationshipNestedSerializer(serializers.ModelSerializer):
+class TenureRelationshipDetailSerializer(serializers.ModelSerializer):
 
     party = PartySerializer(fields=('id', 'name', 'type'))
     spatial_unit = SpatialUnitSerializer(fields=(
@@ -133,12 +133,3 @@ class TenureRelationshipNestedSerializer(serializers.ModelSerializer):
 
     def get_rel_class(self, obj):
         return 'tenure'
-
-
-class TenureRelationshipDownloadSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = models.TenureRelationship
-        fields = ('id', 'party_id', 'spatial_unit_id',
-                  'attributes')
-        read_only_fields = ('id',)

@@ -136,7 +136,7 @@ class SpatialRelationshipDetail(APIPermissionRequiredMixin,
         if self.request.method == 'PATCH':
             return serializers.SpatialRelationshipSerializer
         else:
-            return serializers.SpatialRelationshipNestedSerializer
+            return serializers.SpatialRelationshipDetailSerializer
 
     def destroy(self, request, *args, **kwargs):
         self.get_object().delete()

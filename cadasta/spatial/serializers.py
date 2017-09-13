@@ -91,7 +91,7 @@ class SpatialRelationshipSerializer(serializers.ModelSerializer):
             project=project, **validated_data)
 
 
-class SpatialRelationshipNestedSerializer(serializers.ModelSerializer):
+class SpatialRelationshipDetailSerializer(serializers.ModelSerializer):
 
     su1 = SpatialUnitSerializer(fields=('id', 'geometry', 'type'))
     su2 = SpatialUnitSerializer(fields=('id', 'geometry', 'type'))

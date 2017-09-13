@@ -13,7 +13,7 @@ from party.models import (PartyRelationship,
 from spatial.models import SpatialRelationship
 from party import serializers
 from resources.serializers import ResourceSerializer
-from spatial.serializers import SpatialRelationshipNestedSerializer
+from spatial.serializers import SpatialRelationshipDetailSerializer
 from . import mixins
 from organization.views.mixins import ProjectMixin
 
@@ -144,9 +144,9 @@ class RelationshipList(APIPermissionRequiredMixin,
 
         return Response(paginate_results(
             request,
-            (spatial_rels, SpatialRelationshipNestedSerializer),
-            (party_rels, serializers.PartyRelationshipNestedSerializer),
-            (tenure_rels, serializers.TenureRelationshipNestedSerializer),
+            (spatial_rels, SpatialRelationshipDetailSerializer),
+            (party_rels, serializers.PartyRelationshipDetailSerializer),
+            (tenure_rels, serializers.TenureRelationshipDetailSerializer),
         ))
 
     def get_perms_objects(self):
@@ -184,7 +184,7 @@ class PartyRelationshipDetail(APIPermissionRequiredMixin,
         if self.request.method == 'PATCH':
             return serializers.PartyRelationshipSerializer
         else:
-            return serializers.PartyRelationshipNestedSerializer
+            return serializers.PartyRelationshipDetailSerializer
 
     def destroy(self, request, *args, **kwargs):
         self.get_object().delete()
@@ -222,7 +222,7 @@ class TenureRelationshipDetail(APIPermissionRequiredMixin,
         if self.request.method == 'PATCH':
             return serializers.TenureRelationshipSerializer
         else:
-            return serializers.TenureRelationshipNestedSerializer
+            return serializers.TenureRelationshipDetailSerializer
 
     def destroy(self, request, *args, **kwargs):
         self.get_object().delete()
