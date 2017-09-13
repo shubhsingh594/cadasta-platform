@@ -24,11 +24,12 @@ class TaskTest(TestCase):
         # Assert token generated
         token_mgr.assert_called_once_with(
             endpoints={'GET': [
-                reverse('api:v1:organization:project_detail',
-                        kwargs={
-                            'organization': proj.organization.slug,
-                            'project': proj.slug
-                        }
+                reverse(
+                    'api:v1:organization:project_detail',
+                    kwargs={
+                        'organization': proj.organization.slug,
+                        'project': proj.slug
+                    }
                 )]},
             max_age=43200,
             recipient='export-service',
