@@ -1,25 +1,27 @@
+from collections import OrderedDict
 import importlib
 import os
-from collections import OrderedDict
 
-import django.views.generic as base_generic
 from django.contrib import messages
 from django.conf import settings
 from django.core.files.storage import DefaultStorage, FileSystemStorage
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Sum, When, Case, IntegerField
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.translation import ugettext as _
+from django.utils import timezone
+import django.views.generic as base_generic
+import formtools.wizard.views as wizard
 
 from accounts.models import User
-import core.views.generic as generic
-from core.mixins import (LoginPermissionRequiredMixin, PermissionRequiredMixin,
-                         update_permissions)
-from core.util import random_id
-from core.views import mixins as core_mixins
 from core.form_mixins import get_types
-import formtools.wizard.views as wizard
+from core import mixins as core_mixins
+from core.util import random_id
+from core.views import mixins as core_view_mixins, generic
+from organization.tasks import export
+from party.choices import TENURE_RELATIONSHIP_TYPES
 from questionnaires.exceptions import InvalidQuestionnaire
 from questionnaires.models import Questionnaire
 from resources.models import ContentObject, Resource
@@ -35,7 +37,7 @@ from ..models import Organization, OrganizationRole, Project, ProjectRole
 from ..tasks import schedule_project_export
 
 
-class OrganizationList(PermissionRequiredMixin, generic.ListView):
+class OrganizationList(core_mixins.PermissionRequiredMixin, generic.ListView):
     model = Organization
     template_name = 'organization/organization_list.html'
     permission_required = 'org.list'
@@ -56,7 +58,8 @@ class OrganizationList(PermissionRequiredMixin, generic.ListView):
     )
 
 
-class OrganizationAdd(LoginPermissionRequiredMixin, generic.CreateView):
+class OrganizationAdd(core_mixins.LoginPermissionRequiredMixin,
+                      generic.CreateView):
     model = Organization
     form_class = forms.OrganizationForm
     template_name = 'organization/organization_add.html'
@@ -77,10 +80,10 @@ class OrganizationAdd(LoginPermissionRequiredMixin, generic.CreateView):
         return kwargs
 
 
-class OrganizationDashboard(PermissionRequiredMixin,
+class OrganizationDashboard(core_mixins.PermissionRequiredMixin,
                             mixins.OrgRoleCheckMixin,
                             mixins.ProjectCreateCheckMixin,
-                            core_mixins.CacheObjectMixin,
+                            core_view_mixins.CacheObjectMixin,
                             generic.DetailView):
 
     def get_actions(self, view, request):
@@ -114,21 +117,21 @@ class OrganizationDashboard(PermissionRequiredMixin,
         return super(generic.DetailView, self).render_to_response(context)
 
 
-class OrganizationEdit(LoginPermissionRequiredMixin,
-                       core_mixins.CacheObjectMixin,
+class OrganizationEdit(core_mixins.LoginPermissionRequiredMixin,
+                       core_view_mixins.CacheObjectMixin,
                        generic.UpdateView):
     model = Organization
     form_class = forms.OrganizationForm
     template_name = 'organization/organization_edit.html'
-    permission_required = update_permissions('org.update', True)
+    permission_required = core_mixins.update_permissions('org.update', True)
     permission_denied_message = error_messages.ORG_EDIT
 
     def get_success_url(self):
         return reverse('organization:dashboard', kwargs=self.kwargs)
 
 
-class OrgArchiveView(LoginPermissionRequiredMixin,
-                     core_mixins.ArchiveMixin,
+class OrgArchiveView(core_mixins.LoginPermissionRequiredMixin,
+                     core_view_mixins.ArchiveMixin,
                      generic.DetailView):
     model = Organization
 
@@ -159,10 +162,10 @@ class OrganizationUnarchive(OrgArchiveView):
     do_archive = False
 
 
-class OrganizationMembers(LoginPermissionRequiredMixin,
+class OrganizationMembers(core_mixins.LoginPermissionRequiredMixin,
                           mixins.OrgRoleCheckMixin,
                           mixins.ProjectCreateCheckMixin,
-                          core_mixins.CacheObjectMixin,
+                          core_view_mixins.CacheObjectMixin,
                           generic.DetailView):
     model = Organization
     template_name = 'organization/organization_members.html'
@@ -171,12 +174,12 @@ class OrganizationMembers(LoginPermissionRequiredMixin,
 
 
 class OrganizationMembersAdd(mixins.OrganizationMixin,
-                             LoginPermissionRequiredMixin,
+                             core_mixins.LoginPermissionRequiredMixin,
                              generic.CreateView):
     model = OrganizationRole
     form_class = forms.AddOrganizationMemberForm
     template_name = 'organization/organization_members_add.html'
-    permission_required = update_permissions('org.users.add')
+    permission_required = core_mixins.update_permissions('org.users.add')
     permission_denied_message = error_messages.ORG_USERS_ADD
 
     def get_context_data(self, *args, **kwargs):
@@ -201,10 +204,10 @@ class OrganizationMembersAdd(mixins.OrganizationMixin,
 
 
 class OrganizationMembersEdit(mixins.OrganizationMixin,
-                              LoginPermissionRequiredMixin,
+                              core_mixins.LoginPermissionRequiredMixin,
                               mixins.OrgRoleCheckMixin,
                               mixins.ProjectCreateCheckMixin,
-                              core_mixins.CacheObjectMixin,
+                              core_view_mixins.CacheObjectMixin,
                               base_generic.edit.FormMixin,
                               generic.DetailView):
     model = User
@@ -213,7 +216,7 @@ class OrganizationMembersEdit(mixins.OrganizationMixin,
     template_name = 'organization/organization_members_edit.html'
     project_form_class = forms.EditOrganizationMemberProjectPermissionForm
     org_role_form_class = forms.EditOrganizationMemberForm
-    permission_required = update_permissions('org.users.edit')
+    permission_required = core_mixins.update_permissions('org.users.edit')
     permission_denied_message = error_messages.ORG_USERS_EDIT
 
     def get_success_url(self):
@@ -288,9 +291,9 @@ class OrganizationMembersEdit(mixins.OrganizationMixin,
 
 
 class OrganizationMembersRemove(mixins.OrganizationMixin,
-                                LoginPermissionRequiredMixin,
+                                core_mixins.LoginPermissionRequiredMixin,
                                 generic.DeleteView):
-    permission_required = update_permissions('org.users.remove')
+    permission_required = core_mixins.update_permissions('org.users.remove')
     permission_denied_message = error_messages.ORG_USERS_REMOVE
 
     def admin_is_deleting_themselves(self):
@@ -326,7 +329,7 @@ class OrganizationMembersRemove(mixins.OrganizationMixin,
         return super().delete(*args, **kwargs)
 
 
-class UserList(LoginPermissionRequiredMixin, generic.ListView):
+class UserList(core_mixins.LoginPermissionRequiredMixin, generic.ListView):
     model = User
     template_name = 'organization/user_list.html'
     permission_required = 'user.list'
@@ -350,7 +353,8 @@ class UserList(LoginPermissionRequiredMixin, generic.ListView):
         return context
 
 
-class UserActivation(LoginPermissionRequiredMixin, base_generic.View):
+class UserActivation(core_mixins.LoginPermissionRequiredMixin,
+                     base_generic.View):
     permission_required = 'user.update'
     permission_denied_message = error_messages.USERS_UPDATE
     new_state = None
@@ -365,7 +369,7 @@ class UserActivation(LoginPermissionRequiredMixin, base_generic.View):
         return redirect('user:list')
 
 
-class ProjectList(PermissionRequiredMixin,
+class ProjectList(core_mixins.PermissionRequiredMixin,
                   mixins.ProjectQuerySetMixin,
                   mixins.ProjectCreateCheckMixin,
                   generic.ListView):
@@ -408,7 +412,7 @@ class ProjectList(PermissionRequiredMixin,
         return super().render_to_response(context)
 
 
-class ProjectDashboard(PermissionRequiredMixin,
+class ProjectDashboard(core_mixins.PermissionRequiredMixin,
                        mixins.ProjectAdminCheckMixin,
                        mixins.ProjectMixin,
                        generic.DetailView):
@@ -451,6 +455,12 @@ class ProjectDashboard(PermissionRequiredMixin,
         context['num_parties'] = num_parties
         context['num_resources'] = num_resources
         context['members'] = members
+
+        exports = self.object.tasks.filter(type=export.name)
+        exports = exports.select_related('result').order_by('-created_date')
+        last_week = timezone.now() - timezone.timedelta(days=7)
+        exports = exports.filter(created_date__gte=last_week)[:5]
+        context['recent_exports'] = exports
         try:
             context['questionnaire'] = Questionnaire.objects.get(
                 id=self.object.current_questionnaire)
@@ -488,8 +498,8 @@ def add_wizard_permission_required(self, view, request):
         return 'project.create'
 
 
-class ProjectAddWizard(core_mixins.SuperUserCheckMixin,
-                       LoginPermissionRequiredMixin,
+class ProjectAddWizard(core_view_mixins.SuperUserCheckMixin,
+                       core_mixins.LoginPermissionRequiredMixin,
                        wizard.SessionWizardView):
     permission_required = add_wizard_permission_required
     form_list = PROJECT_ADD_FORMS
@@ -654,9 +664,9 @@ class ProjectAddWizard(core_mixins.SuperUserCheckMixin,
 
 class ProjectEdit(mixins.ProjectMixin,
                   mixins.ProjectAdminCheckMixin,
-                  LoginPermissionRequiredMixin):
+                  core_mixins.LoginPermissionRequiredMixin):
     model = Project
-    permission_required = update_permissions('project.update', True)
+    permission_required = core_mixins.update_permissions('project.update', True)
 
     def get_object(self):
         return self.get_project()
@@ -712,7 +722,7 @@ class ProjectEditPermissions(ProjectEdit, generic.UpdateView):
 
 
 class ProjectArchive(ProjectEdit,
-                     core_mixins.ArchiveMixin,
+                     core_view_mixins.ArchiveMixin,
                      generic.DetailView):
     permission_required = 'project.archive'
     permission_denied_message = error_messages.PROJ_ARCHIVE
@@ -720,7 +730,7 @@ class ProjectArchive(ProjectEdit,
 
 
 class ProjectUnarchive(ProjectEdit,
-                       core_mixins.ArchiveMixin,
+                       core_view_mixins.ArchiveMixin,
                        generic.DetailView):
 
     def patch_actions(self, request, view=None):
@@ -733,7 +743,7 @@ class ProjectUnarchive(ProjectEdit,
 
 
 class ProjectDataDownload(mixins.ProjectMixin,
-                          LoginPermissionRequiredMixin,
+                          core_mixins.LoginPermissionRequiredMixin,
                           mixins.ProjectAdminCheckMixin,
                           base_generic.edit.FormMixin,
                           generic.DetailView):
@@ -780,7 +790,7 @@ DATA_IMPORT_TEMPLATES = {
 
 
 class ProjectDataImportWizard(mixins.ProjectMixin,
-                              LoginPermissionRequiredMixin,
+                              core_mixins.LoginPermissionRequiredMixin,
                               mixins.ProjectAdminCheckMixin,
                               wizard.SessionWizardView):
     permission_required = 'project.import'
