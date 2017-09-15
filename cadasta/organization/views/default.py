@@ -8,7 +8,6 @@ from django.core.files.storage import DefaultStorage, FileSystemStorage
 from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.db.models import Sum, When, Case, IntegerField
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.translation import ugettext as _
 from django.utils import timezone
@@ -25,7 +24,6 @@ from party.choices import TENURE_RELATIONSHIP_TYPES
 from questionnaires.exceptions import InvalidQuestionnaire
 from questionnaires.models import Questionnaire
 from resources.models import ContentObject, Resource
-from party.choices import TENURE_RELATIONSHIP_TYPES
 from spatial.choices import TYPE_CHOICES
 
 from . import mixins
@@ -666,7 +664,8 @@ class ProjectEdit(mixins.ProjectMixin,
                   mixins.ProjectAdminCheckMixin,
                   core_mixins.LoginPermissionRequiredMixin):
     model = Project
-    permission_required = core_mixins.update_permissions('project.update', True)
+    permission_required = core_mixins.update_permissions(
+        'project.update', True)
 
     def get_object(self):
         return self.get_project()
