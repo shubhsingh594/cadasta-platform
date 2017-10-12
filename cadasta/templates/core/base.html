@@ -1,6 +1,7 @@
 {% load i18n %}
 {% load sass_tags %}
 {% load staticfiles %}
+{% load compress %}
 {% load tags %}
 
 {% get_current_language_bidi as LANGUAGE_BIDI %}
@@ -14,7 +15,9 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Cadasta{% block title %}{% endblock %}</title>
+    {% compress css %}
     <link href="{% sass_src 'css/main.scss' %}" rel="stylesheet" type="text/css">
+    {% endcompress %}
     {% if LANGUAGE_BIDI %}
     <link rel="stylesheet" type="text/css"
           href="{% static 'bootstrap-rtl/3.3.4/css/bootstrap-rtl.min.css' %}">
@@ -195,55 +198,65 @@
     </div>
     {% block modals %} {% endblock %}
 
-    <script type="text/javascript" src="{% static 'datatables/1.10.8/js/datatables.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'js/dataTables.conditionalPaging.js' %}"></script>
-    <script type="text/javascript" src="{% url 'javascript-catalog' %}"></script>
-    <script src="{% static 'js/parsleyConfig.js' %}"></script>
-    <script src="{% static 'js/parsley.js' %}"></script>
+    <!-- datatable scripts - contains jquery -->
+    {% compress js %}
+    <script src="{% static 'datatables/1.10.8/js/datatables.min.js' %}"></script>
+    <script src="{% static 'datatables/1.10.8/js/dataTables.conditionalPaging.js' %}"></script>
+    <script src="{% static 'datatables/1.10.8/js/dataTables.selectFiltering.js' %}"></script>
+    <script src="{% static 'datatables/1.10.8/js/dataTables.forms.js' %}"></script>
+    {% endcompress %}
 
     {% block extra_script %}{% endblock %}
+
     <script>
-    $(document).ready(function () {
-      $('.datatable').DataTable({
-        conditionalPaging: true,
-        "dom": '<"table-search clearfix"f>t<"table-pagination"p><"table-entries"i><"table-num"l>',
-        "language": {
-          "emptyTable":     "{% trans "No data available in table" %}",
-          "info":           "{% trans "Showing _START_ - _END_ of _TOTAL_" %}",
-          "infoEmpty":      "{% trans "Showing 0 - 0 of 0" %}",
-          "infoFiltered":   "{% trans "(filtered from _MAX_ total rows)" %}",
-          "lengthMenu":     '<select class="form-control input-sm">'+
-                            ' <option value="10">{% trans "10 per page" %}</option>'+
-                            ' <option value="25">{% trans "25 per page" %}</option>'+
-                            ' <option value="50">{% trans "50 per page" %}</option>'+
-                            ' <option value="100">{% trans "100 per page" %}</option>'+
-                            '</select>',
-          "search": '<div class="input-group"><span class="input-group-addon"><span class="glyphicon glyphicon-search"></span></span>',
-          "searchPlaceholder": '{% trans "Search" %}',
-          "zeroRecords":    "{% trans "No matching records found" %}",
-          "paginate": {
-            "next": '<span class="glyphicon glyphicon-triangle-right"></span>',
-            "previous": '<span class="glyphicon glyphicon-triangle-left"></span>',
-            "first":      "{% trans "First" %}",
-            "last":       "{% trans "Last" %}"
-          },
-          "aria": {
-            "sortAscending":  ": {% trans "activate to sort column ascending" %}",
-            "sortDescending": ": {% trans "activate to sort column descending" %}"
+      $(document).ready(function () {
+        $('.datatable').DataTable({
+          conditionalPaging: true,
+          "dom": '<"table-search clearfix"f>t<"table-pagination"p><"table-entries"i><"table-num"l>',
+          "language": {
+            "emptyTable":     "{% trans "No data available in table" %}",
+            "info":           "{% trans "Showing _START_ - _END_ of _TOTAL_" %}",
+            "infoEmpty":      "{% trans "Showing 0 - 0 of 0" %}",
+            "infoFiltered":   "{% trans "(filtered from _MAX_ total rows)" %}",
+            "lengthMenu":     '<select class="form-control input-sm">'+
+                              ' <option value="10">{% trans "10 per page" %}</option>'+
+                              ' <option value="25">{% trans "25 per page" %}</option>'+
+                              ' <option value="50">{% trans "50 per page" %}</option>'+
+                              ' <option value="100">{% trans "100 per page" %}</option>'+
+                              '</select>',
+            "search": '<div class="input-group"><span class="input-group-addon"><span class="glyphicon glyphicon-search"></span></span>',
+            "searchPlaceholder": '{% trans "Search" %}',
+            "zeroRecords":    "{% trans "No matching records found" %}",
+            "paginate": {
+              "next": '<span class="glyphicon glyphicon-triangle-right"></span>',
+              "previous": '<span class="glyphicon glyphicon-triangle-left"></span>',
+              "first":      "{% trans "First" %}",
+              "last":       "{% trans "Last" %}"
+            },
+            "aria": {
+              "sortAscending":  ": {% trans "activate to sort column ascending" %}",
+              "sortDescending": ": {% trans "activate to sort column descending" %}"
+            }
           }
-        }
+        });
+        $('.dropdown-toggle').dropdown();
+        $('#language').change(function() { this.form.submit(); });
+        $('[data-parsley-required="true"]')
+          .closest('.form-group')
+            .children('label.control-label')
+              .addClass('required');
       });
-      $('.dropdown-toggle').dropdown();
-      $('#language').change(function() { this.form.submit(); });
-      $('[data-parsley-required="true"]')
-        .closest('.form-group')
-          .children('label.control-label')
-            .addClass('required');
-    });
-    window.setTimeout(function() {
-      $(".alert-success").fadeTo(500, 0).slideUp(500, function(){ $(this).hide(); });
-    }, 5000);
+      window.setTimeout(function() {
+        $(".alert-success").fadeTo(500, 0).slideUp(500, function(){ $(this).hide(); });
+      }, 5000);
     </script>
+    <script type="text/javascript" src="{% url 'javascript-catalog' %}"></script>
+    <!-- client-side validation -->
+    {% compress js %}
+    <script src="{% static 'js/parsleyConfig.js' %}"></script>
+    <script src="{% static 'js/parsley.js' %}"></script>
+    <script src="{% static 'js/parsleyAddValidator.js' %}"></script>
+    {% endcompress %}
     <script>
       // User tracking
       window.inlineManualTracking = {
@@ -252,5 +265,6 @@
       }
     </script>
     <script type="text/javascript" src="{% static 'js/inline-manual-player.js' %}"></script>
+
   </body>
 </html>

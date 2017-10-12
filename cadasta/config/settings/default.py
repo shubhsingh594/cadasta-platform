@@ -250,16 +250,7 @@ LEAFLET_CONFIG = {
              'maxZoom': 22}
         ),
     ],
-    'RESET_VIEW': False,
-    'PLUGINS': {
-        'draw': {
-            'js': '/static/leaflet/draw/leaflet.draw.js'
-        },
-        'groupedlayercontrol': {
-            'js': '/static/js/leaflet.groupedlayercontrol.min.js',
-            'css': '/static/css/leaflet.groupedlayercontrol.min.css'
-        }
-    }
+    'RESET_VIEW': False
 }
 
 # Invalid names for Cadasta organizations, projects, and usernames
@@ -319,6 +310,16 @@ STATICFILES_FINDERS = (
     'django.contrib.staticfiles.finders.AppDirectoriesFinder',
     'sass_processor.finders.CssFinder',
     'compressor.finders.CompressorFinder',
+)
+
+# django-compressor
+
+COMPRESS_ENABLED = True
+COMPRESS_URL = STATIC_URL
+
+COMPRESS_CSS_FILTERS = (
+    'compressor.filters.css_default.CssAbsoluteFilter',
+    'compressor.filters.cssmin.CSSMinFilter',
 )
 
 JSONATTRS_SCHEMA_SELECTORS = {
@@ -543,7 +544,7 @@ ICON_LOOKUPS = {
 }
 
 MIME_LOOKUPS = {
-     'gpx': 'application/gpx+xml'
+    'gpx': 'application/gpx+xml'
 }
 
 FILE_UPLOAD_HANDLERS = [
