@@ -136,7 +136,7 @@ class PermissionRequiredTest(UserTestCase, ViewTestCase, TestCase):
         """
         has_permssions should use return value of get_permission_required
         """
-        class TestView(PermissionRequiredMixin, View):
+        class TestView(auth.PermissionRequiredMixin, View):
             permission_required = 'some.perm'
 
             def get_perms(self):
@@ -152,7 +152,7 @@ class PermissionRequiredTest(UserTestCase, ViewTestCase, TestCase):
         """
         has_permssions should use return value of get_permission_required
         """
-        class TestView(PermissionRequiredMixin, View):
+        class TestView(auth.PermissionRequiredMixin, View):
             permission_required = 'some.perm'
 
             def get_perms(self):
@@ -211,7 +211,7 @@ class PermissionRequiredTest(UserTestCase, ViewTestCase, TestCase):
         All permissions defined in permission_required must be present in the
         return value of get_perms.
         """
-        class TestView(PermissionRequiredMixin, View):
+        class TestView(auth.PermissionRequiredMixin, View):
             permission_required = ['some.perm', 'other.perm']
 
             def get_perms(self):
@@ -225,7 +225,7 @@ class PermissionRequiredTest(UserTestCase, ViewTestCase, TestCase):
         All permissions defined in permission_required must be present in the
         return value of get_perms.
         """
-        class TestView(PermissionRequiredMixin, View):
+        class TestView(auth.PermissionRequiredMixin, View):
             permission_required = ['some.perm', 'other.perm']
 
             def get_perms(self):
