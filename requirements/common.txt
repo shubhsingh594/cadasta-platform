@@ -1,7 +1,7 @@
 Django==1.10.8  # rq.filter: <1.11.0
 djangorestframework==3.7.0
 psycopg2==2.7.3.1
-djoser==0.7.0
+djoser==1.0.0
 django-allauth==0.33.0
 django-cors-headers==2.1.0
 django-filter==1.0.4
