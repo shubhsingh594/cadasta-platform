@@ -5,7 +5,7 @@ djoser==1.0.0
 django-allauth==0.33.0
 django-cors-headers==2.1.0
 django-filter==1.0.4
-django-crispy-forms==1.6.1
+django-crispy-forms==1.7.0
 django-parsley==0.6
 django-formtools==2.1
 django-countries==5.0
