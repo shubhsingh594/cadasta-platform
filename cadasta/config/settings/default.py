@@ -315,7 +315,7 @@ STATICFILES_FINDERS = (
 # django-compressor
 
 COMPRESS_ENABLED = True
-COMPRESS_URL = STATIC_URL
+COMPRESS_OUTPUT_DIR = 'cache'
 
 COMPRESS_CSS_FILTERS = (
     'compressor.filters.css_default.CssAbsoluteFilter',
