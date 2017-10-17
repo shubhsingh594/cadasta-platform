@@ -15,9 +15,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Cadasta{% block title %}{% endblock %}</title>
-    {% compress css %}
     <link href="{% sass_src 'css/main.scss' %}" rel="stylesheet" type="text/css">
-    {% endcompress %}
     {% if LANGUAGE_BIDI %}
     <link rel="stylesheet" type="text/css"
           href="{% static 'bootstrap-rtl/3.3.4/css/bootstrap-rtl.min.css' %}">
